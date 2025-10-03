@@ -23,7 +23,7 @@ class Config:
     # Substitua 'sua_senha_para_o_app_aqui' pela senha correta.
     SQLALCHEMY_DATABASE_URI = (
         os.environ.get('DATABASE_URL') or
-        f"mysql+pymysql://sys_manager_user:sua_senha_para_o_app_aqui@localhost/system_manager"
+        f"mysql+pymysql://sys_manager_user:123mudar@localhost/system_manager"
     )
 
     # Desativa uma funcionalidade do Flask-SQLAlchemy que não usaremos e que consome recursos.

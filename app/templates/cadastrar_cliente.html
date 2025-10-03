@@ -1,0 +1,35 @@
+<!-- /deploy/system_manager/app/templates/cadastrar_cliente.html -->
+{% extends "base.html" %}
+
+{% block content %}
+    <h1>Cadastrar Novo Cliente</h1>
+    <form action="" method="post" novalidate>
+        {{ form.hidden_tag() }}
+        <p>
+            {{ form.nome_empresa.label }}  
+
+            {{ form.nome_empresa(size=40) }}
+            {% for error in form.nome_empresa.errors %}
+            <span style="color: red;">[{{ error }}]</span>
+            {% endfor %}
+        </p>
+        <p>
+            {{ form.cnpj.label }}  
+
+            {{ form.cnpj(size=20) }}
+            {% for error in form.cnpj.errors %}
+            <span style="color: red;">[{{ error }}]</span>
+            {% endfor %}
+        </p>
+        <p>
+            {{ form.dia_faturamento.label }}  
+
+            {{ form.dia_faturamento(size=5) }}
+            {% for error in form.dia_faturamento.errors %}
+            <span style="color: red;">[{{ error }}]</span>
+            {% endfor %}
+        </p>
+        <p>{{ form.submit() }}</p>
+    </form>
+{% endblock %}
+

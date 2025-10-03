@@ -1,0 +1,135 @@
+<!-- /deploy/system_manager/app/templates/clientes/lista_clientes.html -->
+{% extends "base.html" %}
+
+{% block content %}
+    <!-- Cabeçalho da Página e Barra de Ações -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="mb-0">Gestão de Clientes</h1>
+        <a href="{{ url_for('main.cadastrar_cliente') }}" class="btn btn-primary">
+            <i class="bi bi-plus-lg"></i> Novo Cliente
+        </a>
+    </div>
+
+    <!-- Card para a Busca e Filtros -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <!-- MUDANÇA 1: Aponte a ação para a própria página de listagem -->
+            <form action="{{ url_for('main.listar_clientes') }}" method="get" class="row g-3 align-items-center">
+                <div class="col-auto flex-grow-1">
+                    <label for="busca" class="visually-hidden">Buscar</label>
+                    <!-- MUDANÇA 2: Preencha o valor do campo com o termo de busca, se existir -->
+                    <input type="text" class="form-control" id="busca" name="busca" 
+                           placeholder="Buscar por nome ou CNPJ..." 
+                           value="{{ termo_busca or '' }}">
+                </div>
+                <div class="col-auto">
+                    <button type="submit" class="btn btn-secondary">
+                        <i class="bi bi-search"></i> Buscar
+                    </button>
+                    <!-- Botão para limpar a busca -->
+                    <a href="{{ url_for('main.listar_clientes') }}" class="btn btn-outline-secondary">Limpar</a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Tabela de Clientes -->
+    <div class="card">
+        <div class="card-header">
+            Lista de Clientes Cadastrados
+        </div>
+        <div class="card-body">
+            {% if clientes %}
+                <div class="table-responsive">
+                    <table class="table table-striped table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th scope="col">Nome da Empresa</th>
+                                <th scope="col">CNPJ</th>
+                                <th scope="col" class="text-center">Dia Faturamento</th>
+                                <th scope="col" class="text-end">Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for cliente in clientes %}
+                            <tr>
+                                <td>{{ cliente.nome_empresa }}</td>
+                                <td>{{ cliente.cnpj }}</td>
+                                <td class="text-center">{{ cliente.dia_faturamento }}</td>
+                                <td class="text-end">
+                                    <a href="#" class="btn btn-sm btn-info" title="Ver Equipamentos">
+                                        <i class="bi bi-hdd-stack"></i>
+                                    </a>
+                                    <a href="{{ url_for('main.editar_cliente', id=cliente.id) }}" class="btn btn-sm btn-warning" title="Editar Cliente">
+                                        <i class="bi bi-pencil-square"></i>
+                                    </a>
+                                    <button type="button" class="btn btn-sm btn-danger" title="Excluir Cliente"
+                                        data-bs-toggle="modal"
+                                        data-bs-target="#confirmDeleteModal"
+                                        data-cliente-id="{{ cliente.id }}"
+                                        data-cliente-nome="{{ cliente.nome_empresa }}">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <div class="alert alert-secondary text-center mb-0">
+                    Nenhum cliente cadastrado ainda.
+                    <a href="{{ url_for('main.cadastrar_cliente') }}" class="alert-link">Clique aqui para cadastrar o primeiro!</a>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+{% endblock %}
+
+{% block modals %}
+<div class="modal fade" id="confirmDeleteModal" tabindex="-1" aria-labelledby="confirmDeleteModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="confirmDeleteModalLabel">Confirmar Exclusão</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        Você tem certeza que deseja excluir o cliente <strong id="clienteNomeModal"></strong>?
+          
+
+        <small class="text-danger">Esta ação não pode ser desfeita.</small>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+        <form id="deleteForm" action="" method="post" style="display: inline;">
+            <button type="submit" class="btn btn-danger">Sim, Excluir</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+<!-- Adicionamos o JavaScript para fazer o modal funcionar -->
+{% block scripts %}
+<script>
+    const confirmDeleteModal = document.getElementById('confirmDeleteModal');
+    confirmDeleteModal.addEventListener('show.bs.modal', function (event) {
+        // Botão que acionou o modal
+        const button = event.relatedTarget;
+        
+        // Extrai as informações dos atributos data-*
+        const clienteId = button.getAttribute('data-cliente-id');
+        const clienteNome = button.getAttribute('data-cliente-nome');
+        
+        // Atualiza o conteúdo do modal
+        const modalBodyStrong = confirmDeleteModal.querySelector('#clienteNomeModal');
+        modalBodyStrong.textContent = clienteNome;
+        
+        // Atualiza a ação do formulário de exclusão
+        const deleteForm = confirmDeleteModal.querySelector('#deleteForm');
+        deleteForm.action = `/cliente/excluir/${clienteId}`;
+    });
+</script>
+{% endblock %}
