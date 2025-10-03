@@ -114,22 +114,22 @@
 <!-- Adicionamos o JavaScript para fazer o modal funcionar -->
 {% block scripts %}
 <script>
-    const confirmDeleteModal = document.getElementById('confirmDeleteModal');
-    confirmDeleteModal.addEventListener('show.bs.modal', function (event) {
-        // Botão que acionou o modal
+document.addEventListener('DOMContentLoaded', function () {
+    const confirmDeleteModalEl = document.getElementById('confirmDeleteModal');
+    if (!confirmDeleteModalEl) return;
+
+    // Inicializa o modal
+    const confirmDeleteModal = new bootstrap.Modal(confirmDeleteModalEl);
+
+    // Adiciona listener ao evento de mostrar o modal
+    confirmDeleteModalEl.addEventListener('show.bs.modal', function (event) {
         const button = event.relatedTarget;
-        
-        // Extrai as informações dos atributos data-*
         const clienteId = button.getAttribute('data-cliente-id');
         const clienteNome = button.getAttribute('data-cliente-nome');
-        
-        // Atualiza o conteúdo do modal
-        const modalBodyStrong = confirmDeleteModal.querySelector('#clienteNomeModal');
-        modalBodyStrong.textContent = clienteNome;
-        
-        // Atualiza a ação do formulário de exclusão
-        const deleteForm = confirmDeleteModal.querySelector('#deleteForm');
-        deleteForm.action = `/cliente/excluir/${clienteId}`;
+
+        confirmDeleteModalEl.querySelector('#clienteNomeModal').textContent = clienteNome;
+        confirmDeleteModalEl.querySelector('#deleteForm').action = `/cliente/excluir/${clienteId}`;
     });
+});
 </script>
 {% endblock %}

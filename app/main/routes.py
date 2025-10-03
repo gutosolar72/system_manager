@@ -46,7 +46,7 @@ def log_auditoria(tipo_acao, tabela_afetada=None, registro_id=None, detalhes=Non
 @bp.route("/")
 @login_required
 def index():
-    return render_template("index.html", title="Dashboard")
+    return render_template("dashboard.html", title="Dashboard")
 
 @bp.route("/login", methods=["GET", "POST"])
 def login():

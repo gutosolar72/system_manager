@@ -86,7 +86,7 @@
             const entity = window.location.pathname.split('/')[1]; // 'clientes' ou 'integradores'
             
             confirmDeleteModal.querySelector('#modalItemName').textContent = itemName;
-            confirmDeleteModal.querySelector('#deleteForm').action = `/${entity.slice(0, -1)}/excluir/${itemId}`;
+            confirmDeleteModal.querySelector('#deleteForm').action = `/integrador/excluir/${itemId}`;
         });
     }
 </script>
