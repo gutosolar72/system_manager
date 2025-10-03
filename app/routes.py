@@ -1,12 +1,11 @@
-from flask import render_template, flash, redirect, url_for, request
-from flask_login import current_user, login_user, logout_user, login_required
-from app.main import bp # Importar bp do __init__.py da main
-from app.models import Usuario, Cliente, Integrador, Contato, AuditoriaLog
-from app.main.forms import LoginForm, ClienteForm, IntegradorForm # Importar forms diretamente
-from werkzeug.security import check_password_hash
-from sqlalchemy import or_
-from app.extensions import db # Importar db de app.extensions
+from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify
+from flask_login import login_user, logout_user, login_required, current_user
+from . import db
+from .models import Usuario, Cliente, Integrador, Contato, AuditoriaLog
+from .forms import LoginForm, ClienteForm, IntegradorForm
 import json
+
+main = Blueprint('main', __name__)
 
 # =============================================================================
 # FUNÇÃO DE AUDITORIA
@@ -17,14 +16,12 @@ def log_auditoria(tipo_acao, tabela_afetada=None, registro_id=None, detalhes=Non
     """
     try:
         # Limpeza de dados para evitar armazenar objetos complexos no log
-        if detalhes:
-            # Converte objetos SQLAlchemy para dicionários simples para log
-            if "dados_novos" in detalhes and hasattr(detalhes["dados_novos"], "__dict__"):
-                detalhes["dados_novos"] = {c.name: getattr(detalhes["dados_novos"], c.name) for c in detalhes["dados_novos"].__table__.columns}
-            if "dados_antigos" in detalhes and hasattr(detalhes["dados_antigos"], "__dict__"):
-                detalhes["dados_antigos"] = {c.name: getattr(detalhes["dados_antigos"], c.name) for c in detalhes["dados_antigos"].__table__.columns}
-            if "dados_excluidos" in detalhes and hasattr(detalhes["dados_excluidos"], "__dict__"):
-                detalhes["dados_excluidos"] = {c.name: getattr(detalhes["dados_excluidos"], c.name) for c in detalhes["dados_excluidos"].__table__.columns}
+        if detalhes and 'dados_novos' in detalhes and '_sa_instance_state' in detalhes['dados_novos']:
+            del detalhes['dados_novos']['_sa_instance_state']
+        if detalhes and 'dados_antigos' in detalhes and '_sa_instance_state' in detalhes['dados_antigos']:
+            del detalhes['dados_antigos']['_sa_instance_state']
+        if detalhes and 'dados_excluidos' in detalhes and '_sa_instance_state' in detalhes['dados_excluidos']:
+            del detalhes['dados_excluidos']['_sa_instance_state']
 
         log = AuditoriaLog(
             usuario_id=current_user.id if current_user.is_authenticated else None,
@@ -34,7 +31,6 @@ def log_auditoria(tipo_acao, tabela_afetada=None, registro_id=None, detalhes=Non
             detalhes=json.dumps(detalhes, ensure_ascii=False, default=str) if detalhes else None
         )
         db.session.add(log)
-        # O commit será feito junto com a transação principal da rota
     except Exception as e:
         print(f"ERRO ao registrar log de auditoria: {e}")
 
@@ -43,51 +39,52 @@ def log_auditoria(tipo_acao, tabela_afetada=None, registro_id=None, detalhes=Non
 # ROTAS DE AUTENTICAÇÃO E PRINCIPAIS
 # =============================================================================
 
-@bp.route("/")
-@login_required
-def index():
-    return render_template("index.html", title="Dashboard")
-
-@bp.route("/login", methods=["GET", "POST"])
+@main.route('/login', methods=['GET', 'POST'])
 def login():
     if current_user.is_authenticated:
-        return redirect(url_for("main.index"))
+        return redirect(url_for('main.dashboard'))
     
     form = LoginForm()
     if form.validate_on_submit():
         user = Usuario.query.filter_by(email=form.email.data).first()
         if user and user.verify_password(form.password.data):
             login_user(user, remember=form.remember_me.data)
-            log_auditoria("LOGIN_SUCESSO", detalhes={"email": user.email})
-            db.session.commit() # Commit do log
-            next_page = request.args.get("next")
-            return redirect(next_page or url_for("main.index"))
+            log_auditoria('LOGIN_SUCESSO', detalhes={'email': user.email})
+            db.session.commit()
+            next_page = request.args.get('next')
+            return redirect(next_page or url_for('main.dashboard'))
         else:
-            log_auditoria("LOGIN_FALHA", detalhes={"email": form.email.data})
-            db.session.commit() # Commit do log
-            flash("E-mail ou senha inválidos.", "danger")
+            log_auditoria('LOGIN_FALHA', detalhes={'email': form.email.data})
+            db.session.commit()
+            flash('E-mail ou senha inválidos.', 'danger')
             
-    return render_template("login.html", title="Entrar", form=form)
+    return render_template('login.html', form=form)
 
-@bp.route("/logout")
+@main.route('/logout')
 @login_required
 def logout():
     logout_user()
-    flash("Você foi desconectado com sucesso.", "success")
-    return redirect(url_for("main.index"))
+    flash('Você foi desconectado com sucesso.', 'success')
+    return redirect(url_for('main.login'))
+
+@main.route('/')
+@main.route('/dashboard')
+@login_required
+def dashboard():
+    return render_template('dashboard.html')
 
 # =============================================================================
 # CRUD DE CLIENTES
 # =============================================================================
 
-@bp.route("/clientes")
+@main.route('/clientes')
 @login_required
 def listar_clientes():
-    query_param = request.args.get("busca", "")
-    page = request.args.get("page", 1, type=int)
+    query = request.args.get('q', '')
+    page = request.args.get('page', 1, type=int)
     
-    if query_param:
-        search_filter = f"%{query_param}%"
+    if query:
+        search_filter = f"%{query}%"
         clientes_pagination = Cliente.query.filter(
             (Cliente.nome_empresa.like(search_filter)) |
             (Cliente.cnpj.like(search_filter)) |
@@ -96,37 +93,39 @@ def listar_clientes():
     else:
         clientes_pagination = Cliente.query.order_by(Cliente.nome_empresa).paginate(page=page, per_page=10)
         
-    return render_template("clientes/lista_clientes.html", clientes=clientes_pagination, title="Clientes", termo_busca=query_param)
+    # CORREÇÃO: Caminho do template ajustado
+    return render_template('clientes.html', clientes=clientes_pagination, query=query)
 
-@bp.route("/cliente/novo", methods=["GET", "POST"])
+@main.route('/clientes/add', methods=['GET', 'POST'])
 @login_required
-def cadastrar_cliente():
+def adicionar_cliente():
     form = ClienteForm()
     if form.validate_on_submit():
         novo_cliente = Cliente(
-            integrador_id=form.integrador_id.data, # Usar o integrador_id do formulário
             nome_empresa=form.nome_empresa.data,
             cnpj=form.cnpj.data,
             endereco=form.endereco.data,
             bairro=form.bairro.data,
             cidade=form.cidade.data,
-            uf=form.uf.data.upper(),
-            cep=form.cep.data, # Campo CEP adicionado
+            uf=form.uf.data,
+            cep=form.cep.data,
             telefone=form.telefone.data,
+            integrador_id=form.integrador_id.data,
             dia_faturamento=form.dia_faturamento.data
         )
         db.session.add(novo_cliente)
         db.session.flush() 
 
-        log_auditoria("CRIACAO", tabela_afetada="clientes", registro_id=novo_cliente.id, detalhes={"dados_novos": novo_cliente})
+        log_auditoria('CRIACAO', tabela_afetada='clientes', registro_id=novo_cliente.id, detalhes={'dados_novos': {c.name: getattr(novo_cliente, c.name) for c in novo_cliente.__table__.columns}})
         
         db.session.commit()
-        flash("Cliente cadastrado com sucesso!", "success")
-        return redirect(url_for("main.listar_clientes"))
-    
-    return render_template("clientes/cadastrar_cliente.html", title="Cadastrar Cliente", form=form)
+        flash('Cliente adicionado com sucesso!', 'success')
+        return redirect(url_for('main.listar_clientes'))
+        
+    # CORREÇÃO: Caminho do template ajustado
+    return render_template('cliente_form.html', form=form, cliente=None)
 
-@bp.route("/cliente/editar/<int:id>", methods=["GET", "POST"])
+@main.route('/clientes/edit/<int:id>', methods=['GET', 'POST'])
 @login_required
 def editar_cliente(id):
     cliente = Cliente.query.get_or_404(id)
@@ -142,39 +141,40 @@ def editar_cliente(id):
         
         dados_novos = {c.name: getattr(cliente, c.name) for c in cliente.__table__.columns}
         
-        log_auditoria("ATUALIZACAO", tabela_afetada="clientes", registro_id=cliente.id, detalhes={"dados_antigos": dados_antigos, "dados_novos": dados_novos})
+        log_auditoria('ATUALIZACAO', tabela_afetada='clientes', registro_id=cliente.id, detalhes={'dados_antigos': dados_antigos, 'dados_novos': dados_novos})
 
         db.session.commit()
-        flash("Cliente atualizado com sucesso!", "success")
-        return redirect(url_for("main.listar_clientes"))
+        flash('Cliente atualizado com sucesso!', 'success')
+        return redirect(url_for('main.listar_clientes'))
 
-    return render_template("clientes/editar_cliente.html", title="Editar Cliente", form=form, cliente=cliente)
+    # CORREÇÃO: Caminho do template ajustado
+    return render_template('cliente_form.html', form=form, cliente=cliente)
 
-@bp.route("/cliente/excluir/<int:id>", methods=["POST"])
+@main.route('/clientes/delete/<int:id>', methods=['POST'])
 @login_required
-def excluir_cliente(id):
+def deletar_cliente(id):
     cliente = Cliente.query.get_or_404(id)
     
     dados_excluidos = {c.name: getattr(cliente, c.name) for c in cliente.__table__.columns}
-    log_auditoria("EXCLUSAO", tabela_afetada="clientes", registro_id=id, detalhes={"dados_excluidos": dados_excluidos})
+    log_auditoria('EXCLUSAO', tabela_afetada='clientes', registro_id=id, detalhes={'dados_excluidos': dados_excluidos})
 
     db.session.delete(cliente)
     db.session.commit()
-    flash(f"Cliente \"{cliente.nome_empresa}\" foi excluído com sucesso.", "success")
-    return redirect(url_for("main.listar_clientes"))
+    flash('Cliente excluído com sucesso.', 'success')
+    return redirect(url_for('main.listar_clientes'))
 
 # =============================================================================
 # CRUD DE INTEGRADORES
 # =============================================================================
 
-@bp.route("/integradores")
+@main.route('/integradores')
 @login_required
 def listar_integradores():
-    query_param = request.args.get("busca", "")
-    page = request.args.get("page", 1, type=int)
+    query = request.args.get('q', '')
+    page = request.args.get('page', 1, type=int)
     
-    if query_param:
-        search_filter = f"%{query_param}%"
+    if query:
+        search_filter = f"%{query}%"
         integradores_pagination = Integrador.query.filter(
             (Integrador.nome_empresa.like(search_filter)) |
             (Integrador.cnpj.like(search_filter))
@@ -182,11 +182,12 @@ def listar_integradores():
     else:
         integradores_pagination = Integrador.query.order_by(Integrador.nome_empresa).paginate(page=page, per_page=10)
         
-    return render_template("integradores/lista_integradores.html", integradores=integradores_pagination, title="Integradores", termo_busca=query_param)
+    # CORREÇÃO: Caminho do template ajustado
+    return render_template('integradores.html', integradores=integradores_pagination, query=query)
 
-@bp.route("/integrador/novo", methods=["GET", "POST"])
+@main.route('/integradores/add', methods=['GET', 'POST'])
 @login_required
-def cadastrar_integrador():
+def adicionar_integrador():
     form = IntegradorForm()
     if form.validate_on_submit():
         novo_integrador = Integrador(
@@ -195,9 +196,9 @@ def cadastrar_integrador():
             endereco=form.endereco.data,
             bairro=form.bairro.data,
             cidade=form.cidade.data,
-            uf=form.uf.data.upper(),
-            cep=form.cep.data, # Campo CEP adicionado
-            telefone=form.telefone.data
+            uf=form.uf.data,
+            cep=form.cep.data,
+            telefone=form.telefone_empresa.data
         )
         
         contato_principal = Contato(
@@ -212,24 +213,25 @@ def cadastrar_integrador():
         db.session.add(contato_principal)
         db.session.flush()
 
-        log_auditoria("CRIACAO", tabela_afetada="integradores", registro_id=novo_integrador.id, detalhes={"dados_novos": novo_integrador})
+        log_auditoria('CRIACAO', tabela_afetada='integradores', registro_id=novo_integrador.id, detalhes={'dados_novos': {c.name: getattr(novo_integrador, c.name) for c in novo_integrador.__table__.columns}})
 
         db.session.commit()
-        flash("Integrador adicionado com sucesso!", "success")
-        return redirect(url_for("main.listar_integradores"))
+        flash('Integrador adicionado com sucesso!', 'success')
+        return redirect(url_for('main.listar_integradores'))
         
-    return render_template("integradores/form_integrador.html", title="Novo Integrador", form=form)
+    # CORREÇÃO: Caminho do template ajustado
+    return render_template('integrador_form.html', form=form, integrador=None)
 
-@bp.route("/integrador/editar/<int:id>", methods=["GET", "POST"])
+@main.route('/integradores/edit/<int:id>', methods=['GET', 'POST'])
 @login_required
 def editar_integrador(id):
     integrador = Integrador.query.get_or_404(id)
     contato_principal = integrador.get_contato_principal() or Contato(is_principal=True, integrador=integrador)
     
     form = IntegradorForm(obj=integrador)
-    if request.method == "GET":
-        form.telefone.data = integrador.telefone # Corrigido para form.telefone
-        if contato_principal and contato_principal.id: 
+    if request.method == 'GET':
+        form.telefone_empresa.data = integrador.telefone
+        if contato_principal and contato_principal.id: # Checa se o contato já existe
             form.nome_contato.data = contato_principal.nome
             form.email_contato.data = contato_principal.email
             form.telefone_contato.data = contato_principal.telefone
@@ -241,37 +243,40 @@ def editar_integrador(id):
         integrador.cnpj = form.cnpj.data
         integrador.endereco = form.endereco.data
         integrador.bairro = form.bairro.data
-        integrador.cidade = form.cidade.data,
-        integrador.uf = form.uf.data.upper()
-        integrador.cep = form.cep.data # Campo CEP adicionado
-        integrador.telefone = form.telefone.data # Corrigido para form.telefone
+        integrador.cidade = form.cidade.data
+        integrador.uf = form.uf.data
+        integrador.cep = form.cep.data
+        integrador.telefone = form.telefone_empresa.data
         
         contato_principal.nome = form.nome_contato.data
         contato_principal.email = form.email_contato.data
         contato_principal.telefone = form.telefone_contato.data
         
         db.session.add(integrador)
-        if not contato_principal.id: 
+        if not contato_principal.id: # Adiciona o contato se for novo
             db.session.add(contato_principal)
 
         dados_novos = {c.name: getattr(integrador, c.name) for c in integrador.__table__.columns}
 
-        log_auditoria("ATUALIZACAO", tabela_afetada="integradores", registro_id=integrador.id, detalhes={"dados_antigos": dados_antigos, "dados_novos": dados_novos})
+        log_auditoria('ATUALIZACAO', tabela_afetada='integradores', registro_id=integrador.id, detalhes={'dados_antigos': dados_antigos, 'dados_novos': dados_novos})
 
         db.session.commit()
-        flash("Integrador atualizado com sucesso!", "success")
-        return redirect(url_for("main.listar_integradores"))
+        flash('Integrador atualizado com sucesso!', 'success')
+        return redirect(url_for('main.listar_integradores'))
 
-    return render_template("integradores/form_integrador.html", title="Editar Integrador", form=form, integrador=integrador)
+    # CORREÇÃO: Caminho do template ajustado
+    return render_template('integrador_form.html', form=form, integrador=integrador)
 
-@bp.route("/integrador/excluir/<int:id>", methods=["POST"])
+@main.route('/integradores/delete/<int:id>', methods=['POST'])
 @login_required
-def excluir_integrador(id):
+def deletar_integrador(id):
     integrador = Integrador.query.get_or_404(id)
+    
     dados_excluidos = {c.name: getattr(integrador, c.name) for c in integrador.__table__.columns}
-    log_auditoria("EXCLUSAO", tabela_afetada="integradores", registro_id=id, detalhes={"dados_excluidos": dados_excluidos})
+    log_auditoria('EXCLUSAO', tabela_afetada='integradores', registro_id=id, detalhes={'dados_excluidos': dados_excluidos})
+
     db.session.delete(integrador)
     db.session.commit()
-    flash(f"Integrador \"{integrador.nome_empresa}\" foi excluído com sucesso.", "success")
-    return redirect(url_for("main.listar_integradores"))
+    flash('Integrador excluído com sucesso.', 'success')
+    return redirect(url_for('main.listar_integradores'))
 

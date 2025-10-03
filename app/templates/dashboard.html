@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+
+{% block title %}
+    Dashboard - System Manager
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="px-4 py-5 my-5 text-center">
+        <h1 class="display-5 fw-bold">Bem-vindo ao System Manager</h1>
+        <div class="col-lg-6 mx-auto">
+            <p class="lead mb-4">
+                Gerencie suas licenças, clientes e integradores de forma centralizada e eficiente.
+                Utilize o menu de navegação acima para começar.
+            </p>
+            <div class="d-grid gap-2 d-sm-flex justify-content-sm-center">
+                <a href="{{ url_for('main.listar_clientes') }}" type="button" class="btn btn-primary btn-lg px-4 gap-3">
+                    <i class="bi bi-people-fill"></i> Gerenciar Clientes
+                </a>
+                <a href="{{ url_for('main.listar_integradores') }}" type="button" class="btn btn-outline-secondary btn-lg px-4">
+                    <i class="bi bi-briefcase-fill"></i> Gerenciar Integradores
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-4">
+            <div class="card text-center mb-3">
+                <div class="card-body">
+                    <h5 class="card-title">Clientes Ativos</h5>
+                    <p class="card-text fs-1">0</p> {# Placeholder - vamos popular isso depois #}
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card text-center mb-3">
+                <div class="card-body">
+                    <h5 class="card-title">Integradores</h5>
+                    <p class="card-text fs-1">0</p> {# Placeholder #}
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card text-center mb-3">
+                <div class="card-body">
+                    <h5 class="card-title">Licenças Ativas</h5>
+                    <p class="card-text fs-1">0</p> {# Placeholder #}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+

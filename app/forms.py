@@ -1,7 +1,7 @@
 from flask_wtf import FlaskForm
 from wtforms import StringField, PasswordField, SubmitField, BooleanField, SelectField, TextAreaField, IntegerField
 from wtforms.validators import DataRequired, Length, Email, EqualTo, Optional, ValidationError, Regexp
-from app.models import Integrador, Usuario # Importar modelos de app.models
+from .models import Integrador, Usuario
 
 # --- Formulários de Autenticação ---
 
@@ -30,7 +30,7 @@ class ClienteForm(FlaskForm):
         ('PI', 'PI'), ('RJ', 'RJ'), ('RN', 'RN'), ('RS', 'RS'), ('RO', 'RO'), ('RR', 'RR'), 
         ('SC', 'SC'), ('SP', 'SP'), ('SE', 'SE'), ('TO', 'TO')
     ], validators=[Optional()])
-    cep = StringField('CEP', validators=[Optional(), Length(max=9)]) # CAMPO ADICIONADO
+    cep = StringField('CEP', validators=[Optional(), Length(max=9)]) # <-- CAMPO ADICIONADO
 
     # Configurações
     integrador_id = SelectField('Integrador Responsável', coerce=int, validators=[DataRequired()])
@@ -44,7 +44,9 @@ class ClienteForm(FlaskForm):
         self.integrador_id.choices = [(i.id, i.nome_empresa) for i in Integrador.query.order_by(Integrador.nome_empresa).all()]
 
     def validate_cnpj(self, field):
+        # Lógica de validação de CNPJ (pode ser melhorada com bibliotecas específicas)
         if field.data:
+            # Remove a máscara para validar
             cnpj_limpo = ''.join(filter(str.isdigit, field.data))
             if len(cnpj_limpo) != 14:
                 raise ValidationError('CNPJ deve ter 14 dígitos.')
@@ -54,7 +56,7 @@ class IntegradorForm(FlaskForm):
     # Dados da Empresa
     nome_empresa = StringField('Nome da Empresa', validators=[DataRequired(), Length(max=255)])
     cnpj = StringField('CNPJ', validators=[Optional(), Length(max=18)])
-    telefone = StringField('Telefone da Empresa', validators=[Optional(), Length(max=20)]) # Renomeado de telefone_empresa para telefone
+    telefone_empresa = StringField('Telefone da Empresa', validators=[Optional(), Length(max=20)])
 
     # Endereço
     endereco = StringField('Endereço', validators=[Optional(), Length(max=255)])
@@ -67,7 +69,7 @@ class IntegradorForm(FlaskForm):
         ('PI', 'PI'), ('RJ', 'RJ'), ('RN', 'RN'), ('RS', 'RS'), ('RO', 'RO'), ('RR', 'RR'), 
         ('SC', 'SC'), ('SP', 'SP'), ('SE', 'SE'), ('TO', 'TO')
     ], validators=[Optional()])
-    cep = StringField('CEP', validators=[Optional(), Length(max=9)]) # CAMPO ADICIONADO
+    cep = StringField('CEP', validators=[Optional(), Length(max=9)]) # <-- CAMPO ADICIONADO
 
     # Contato Principal
     nome_contato = StringField('Nome do Contato', validators=[DataRequired(), Length(max=255)])
@@ -83,5 +85,7 @@ class IntegradorForm(FlaskForm):
                 raise ValidationError('CNPJ deve ter 14 dígitos.')
 
     def validate_email_contato(self, field):
+        # Validação para garantir que o email do contato não está em uso por outro usuário do sistema
+        # (se aplicável no futuro)
         pass
 

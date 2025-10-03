@@ -1,8 +1,6 @@
-# /deploy/system_manager/app/__init__.py
-
 from flask import Flask
 from config import Config
-from .extensions import db, login
+from app.extensions import db, login # Importa db e login de app.extensions
 
 def create_app(config_class=Config):
     app = Flask(__name__)
@@ -11,14 +9,17 @@ def create_app(config_class=Config):
     db.init_app(app)
     login.init_app(app)
     login.login_view = 'main.login'
+    login.login_message = 'Por favor, faça login para acessar esta página.'
+    login.login_message_category = 'info'
 
-    from .main import bp as main_blueprint
+    from .main import bp as main_blueprint # Importa o blueprint corretamente
     app.register_blueprint(main_blueprint)
 
-    from . import models
+    # Removido: from . import models para evitar importação circular
 
     @app.shell_context_processor
     def make_shell_context():
+        from app import models # Importa models aqui para o shell context
         return {
             'db': db,
             'Usuario': models.Usuario,
