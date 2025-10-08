@@ -46,7 +46,7 @@ class Cliente(db.Model):
 
     # Relacionamentos
     contatos = db.relationship('Contato', back_populates='cliente', cascade="all, delete-orphan")
-    licencas = db.relationship('Licencas', backref='cliente', lazy=True)
+    licencas = db.relationship('Licenca', backref='cliente', lazy=True)
 
 class Contato(db.Model):
     __tablename__ = 'contatos'
@@ -73,7 +73,7 @@ class Produto(db.Model):
     modulos_inclusos = db.Column(db.Text, nullable=False) # JSON como string
 
     # Relacionamento
-    licencas = db.relationship('Licencas', backref='produto', lazy=True)
+    licencas = db.relationship('Licenca', backref='produto', lazy=True)
 
     @property
     def modulos(self):
@@ -83,19 +83,21 @@ class Produto(db.Model):
     def modulos(self, value):
         self.modulos_inclusos = json.dumps(value)
 
-class Licencas(db.Model):
+class Licenca(db.Model):
     __tablename__ = 'licencas'
     id = db.Column(db.Integer, primary_key=True)
     produto_id = db.Column(db.Integer, db.ForeignKey('produtos.id'), nullable=False)
     cliente_id = db.Column(db.Integer, db.ForeignKey('clientes.id'), nullable=False)
     chave_licenca = db.Column(db.String(255), unique=True, nullable=False)
+    uuid = db.Column(db.String(64), nullable=True)
+    mac = db.Column(db.String(32), nullable=True)
     descricao = db.Column(db.String(255), nullable=True)
-    status = db.Column(db.Enum('pendente', 'ativo', 'bloqueado'), nullable=False, default='pendente')
+    status = db.Column(db.Enum('pendente','ativo','bloqueado'), nullable=False, default='pendente')
     dia_faturamento = db.Column(db.Integer, nullable=False)
     data_ativacao = db.Column(db.TIMESTAMP, nullable=True)
     data_expiracao = db.Column(db.Date, nullable=True)
     ultima_verificacao = db.Column(db.TIMESTAMP, nullable=True)
-    modulos_override = db.Column(db.Text, nullable=True) # JSON como string
+    modulos_override = db.Column(db.Text, nullable=True)
 
     # Relacionamentos
     pagamentos = db.relationship('HistoricoPagamento', backref='licenca', lazy=True)
@@ -111,12 +113,13 @@ class Licencas(db.Model):
 class HistoricoPagamento(db.Model):
     __tablename__ = 'historico_pagamentos'
     id = db.Column(db.Integer, primary_key=True)
-    licenca_id = db.Column(db.Integer, db.ForeignKey('licencas.id'), nullable=False)
+    licenca_id = db.Column(db.Integer, db.ForeignKey('licencas.id'), nullable=False) 
     valor_pago = db.Column(db.Numeric(10, 2), nullable=False)
     data_pagamento = db.Column(db.Date, nullable=False)
     periodo_referencia_inicio = db.Column(db.Date, nullable=False)
     periodo_referencia_fim = db.Column(db.Date, nullable=False)
     observacao = db.Column(db.Text, nullable=True)
+
 
 # --- Modelos de Suporte e Autenticação ---
 

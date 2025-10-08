@@ -1,0 +1,38 @@
+from flask import Blueprint, request, jsonify
+from app.extensions import db
+from app.models import Licenca
+import hashlib
+
+bp_api = Blueprint('api', __name__)
+
+@bp_api.route('/api/ativar_licenca', methods=['POST'])
+def ativar_licenca():
+    data = request.get_json()
+    uuid = data.get('uuid')
+    mac = data.get('mac')
+    hash_cliente = data.get('hash')
+
+    if not uuid or not mac or not hash_cliente:
+        return jsonify({'status': 'erro', 'mensagem': 'Campos obrigatórios ausentes'}), 400
+
+    # Recalcula o hash esperado
+    combined = f"UUID:{uuid}|MAC:{mac}"
+    hash_esperado = hashlib.sha256(combined.encode('utf-8')).hexdigest().upper()
+
+    if hash_cliente != hash_esperado:
+        return jsonify({'status': 'erro', 'mensagem': 'Hash inválido'}), 403
+
+    # Verifica se já existe licença cadastrada para este hash
+    licenca = Licenca.query.filter_by(hash=hash_cliente).first()
+    if not licenca:
+        licenca = Licenca(uuid=uuid, mac=mac, hash=hash_cliente, status='ativo')
+        db.session.add(licenca)
+    else:
+        licenca.status = 'ativo'
+        licenca.uuid = uuid
+        licenca.mac = mac
+
+    db.session.commit()
+
+    return jsonify({'status': 'ok', 'mensagem': 'Licença ativada com sucesso'})
+

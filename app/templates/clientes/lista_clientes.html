@@ -1,86 +1,93 @@
 {% extends "base.html" %}
 
 {% block content %}
-    <!-- Cabeçalho da Página e Barra de Ações -->
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h1 class="mb-0">Gestão de Clientes</h1>
-        <a href="{{ url_for('main.cadastrar_cliente') }}" class="btn btn-primary">
-            <i class="bi bi-plus-lg"></i> Novo Cliente
-        </a>
-    </div>
+<!-- Cabeçalho da Página e Barra de Ações -->
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="mb-0">Gestão de Clientes</h1>
+    <a href="{{ url_for('main.cadastrar_cliente') }}" class="btn btn-primary">
+        <i class="bi bi-plus-lg"></i> Novo Cliente
+    </a>
+</div>
 
-    <!-- Card para a Busca e Filtros -->
-    <div class="card mb-4">
-        <div class="card-body">
-            <form action="{{ url_for('main.listar_clientes') }}" method="get" class="row g-3 align-items-center">
-                <div class="col-auto flex-grow-1">
-                    <label for="busca" class="visually-hidden">Buscar</label>
-                    <input type="text" class="form-control" id="busca" name="busca"
-                           placeholder="Buscar por nome ou CNPJ..."
-                           value="{{ termo_busca or '' }}">
-                </div>
-                <div class="col-auto">
-                    <button type="submit" class="btn btn-secondary">
-                        <i class="bi bi-search"></i> Buscar
-                    </button>
-                    <a href="{{ url_for('main.listar_clientes') }}" class="btn btn-outline-secondary">Limpar</a>
-                </div>
-            </form>
-        </div>
+<!-- Card para a Busca e Filtros -->
+<div class="card mb-4">
+    <div class="card-body">
+        <form action="{{ url_for('main.listar_clientes') }}" method="get" class="row g-3 align-items-center">
+            <div class="col-auto flex-grow-1">
+                <label for="busca" class="visually-hidden">Buscar</label>
+                <input type="text" class="form-control" id="busca" name="busca"
+                       placeholder="Buscar por nome ou CNPJ..."
+                       value="{{ termo_busca or '' }}">
+            </div>
+            <div class="col-auto">
+                <button type="submit" class="btn btn-secondary">
+                    <i class="bi bi-search"></i> Buscar
+                </button>
+                <a href="{{ url_for('main.listar_clientes') }}" class="btn btn-outline-secondary">Limpar</a>
+            </div>
+        </form>
     </div>
+</div>
 
-    <!-- Tabela de Clientes -->
-    <div class="card">
-        <div class="card-header">
-            Lista de Clientes Cadastrados
-        </div>
-        <div class="card-body">
-            {% if clientes %}
-                <div class="table-responsive">
-                    <table class="table table-striped table-hover mb-0">
-                        <thead class="table-light">
-                            <tr>
-                                <th scope="col">Nome da Empresa</th>
-                                <th scope="col">CNPJ</th>
-                                <th scope="col" class="text-end">Ações</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for cliente in clientes %}
-                            <tr>
-                                <td>{{ cliente.nome_empresa }}</td>
-                                <td>{{ cliente.cnpj }}</td>
-                                <td class="text-end">
-                                    <a href="#" class="btn btn-sm btn-info" title="Ver Licenças">
-                                        <i class="bi bi-hdd-stack"></i>
-                                    </a>
-                                    <a href="{{ url_for('main.editar_cliente', id=cliente.id) }}" class="btn btn-sm btn-warning" title="Editar Cliente">
-                                        <i class="bi bi-pencil-square"></i>
-                                    </a>
-                                    <button type="button" class="btn btn-sm btn-danger" title="Excluir Cliente"
-                                        data-bs-toggle="modal"
-                                        data-bs-target="#confirmDeleteModal"
-                                        data-cliente-id="{{ cliente.id }}"
-                                        data-cliente-nome="{{ cliente.nome_empresa }}">
-                                        <i class="bi bi-trash"></i>
-                                    </button>
-                                </td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-            {% else %}
-                <div class="alert alert-secondary text-center mb-0">
-                    Nenhum cliente cadastrado ainda.
-                    <a href="{{ url_for('main.cadastrar_cliente') }}" class="alert-link">Clique aqui para cadastrar o primeiro!</a>
-                </div>
-            {% endif %}
-        </div>
+<!-- Tabela de Clientes -->
+<div class="card">
+    <div class="card-header">
+        Lista de Clientes Cadastrados
     </div>
+    <div class="card-body">
+        {% if clientes %}
+            <div class="table-responsive">
+                <table class="table table-striped table-hover mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th scope="col">Nome da Empresa</th>
+                            <th scope="col">CNPJ</th>
+                            <th scope="col" class="text-end">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for cliente in clientes %}
+                        <tr>
+                            <td>{{ cliente.nome_empresa }}</td>
+                            <td>{{ cliente.cnpj }}</td>
+                            <td class="text-end">
+                                <!-- Botão Ver Licenças -->
+                                <button type="button" class="btn btn-sm btn-info ver-licencas"
+                                    data-bs-toggle="modal"
+                                    data-bs-target="#licencasModal"
+                                    data-cliente-id="{{ cliente.id }}" title="Ver Licenças">
+                                    <i class="bi bi-hdd-stack"></i>
+                                </button>
+                                <!-- Botão Editar -->
+                                <a href="{{ url_for('main.editar_cliente', id=cliente.id) }}" class="btn btn-sm btn-warning" title="Editar Cliente">
+                                    <i class="bi bi-pencil-square"></i>
+                                </a>
+                                <!-- Botão Excluir -->
+                                <button type="button" class="btn btn-sm btn-danger" title="Excluir Cliente"
+                                    data-bs-toggle="modal"
+                                    data-bs-target="#confirmDeleteModal"
+                                    data-cliente-id="{{ cliente.id }}"
+                                    data-cliente-nome="{{ cliente.nome_empresa }}">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="alert alert-secondary text-center mb-0">
+                Nenhum cliente cadastrado ainda.
+                <a href="{{ url_for('main.cadastrar_cliente') }}" class="alert-link">Clique aqui para cadastrar o primeiro!</a>
+            </div>
+        {% endif %}
+    </div>
+</div>
 {% endblock %}
 
 {% block modals %}
+<!-- Modal de Exclusão -->
 <div class="modal fade" id="confirmDeleteModal" tabindex="-1" aria-labelledby="confirmDeleteModalLabel" aria-hidden="true">
   <div class="modal-dialog">
     <div class="modal-content">
@@ -101,24 +108,77 @@
     </div>
   </div>
 </div>
+
+<!-- Modal de Licenças -->
+<div class="modal fade" id="licencasModal" tabindex="-1" aria-labelledby="licencasModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="licencasModalLabel">Licenças do Cliente</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+      </div>
+      <div class="modal-body" id="licencasContainer">
+        Carregando licenças...
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+      </div>
+    </div>
+  </div>
+</div>
 {% endblock %}
 
 {% block scripts %}
 <script>
 document.addEventListener('DOMContentLoaded', function () {
+    // Modal de exclusão
     const confirmDeleteModalEl = document.getElementById('confirmDeleteModal');
-    if (!confirmDeleteModalEl) return;
+    if (confirmDeleteModalEl) {
+        const confirmDeleteModal = new bootstrap.Modal(confirmDeleteModalEl);
+        confirmDeleteModalEl.addEventListener('show.bs.modal', function (event) {
+            const button = event.relatedTarget;
+            const clienteId = button.getAttribute('data-cliente-id');
+            const clienteNome = button.getAttribute('data-cliente-nome');
+            confirmDeleteModalEl.querySelector('#clienteNomeModal').textContent = clienteNome;
+            confirmDeleteModalEl.querySelector('#deleteForm').action = `/cliente/excluir/${clienteId}`;
+        });
+    }
 
-    const confirmDeleteModal = new bootstrap.Modal(confirmDeleteModalEl);
+    // Modal de licenças
+    const licencasModalEl = document.getElementById('licencasModal');
+    if (licencasModalEl) {
+        licencasModalEl.addEventListener('show.bs.modal', function (event) {
+            const button = event.relatedTarget;
+            const clienteId = button.getAttribute('data-cliente-id');
 
-    confirmDeleteModalEl.addEventListener('show.bs.modal', function (event) {
-        const button = event.relatedTarget;
-        const clienteId = button.getAttribute('data-cliente-id');
-        const clienteNome = button.getAttribute('data-cliente-nome');
+            const container = licencasModalEl.querySelector('#licencasContainer');
+            container.innerHTML = '<p>Carregando licenças...</p>';
 
-        confirmDeleteModalEl.querySelector('#clienteNomeModal').textContent = clienteNome;
-        confirmDeleteModalEl.querySelector('#deleteForm').action = `/cliente/excluir/${clienteId}`;
-    });
+            fetch(`/clientes/${clienteId}/licencas/json`)
+                .then(res => res.json())
+                .then(data => {
+                    if (data.licencas.length === 0) {
+                        container.innerHTML = '<p>Nenhuma licença vinculada.</p>';
+                        return;
+                    }
+
+                    let html = '<table class="table table-striped"><thead><tr><th>Produto</th><th>Chave</th><th>Status</th></tr></thead><tbody>';
+                    data.licencas.forEach(l => {
+                        html += `<tr>
+                            <td>${l.produto}</td>
+                            <td>${l.chave_licenca}</td>
+                            <td>${l.status}</td>
+                        </tr>`;
+                    });
+                    html += '</tbody></table>';
+                    container.innerHTML = html;
+                })
+                .catch(err => {
+                    container.innerHTML = '<p class="text-danger">Erro ao carregar licenças.</p>';
+                    console.error(err);
+                });
+        });
+    }
 });
 </script>
 {% endblock %}

@@ -15,6 +15,9 @@ def create_app(config_class=Config):
     from .main import bp as main_blueprint # Importa o blueprint corretamente
     app.register_blueprint(main_blueprint)
 
+    from app.api import bp_api
+    app.register_blueprint(bp_api, url_prefix='/api')
+
     # Removido: from . import models para evitar importação circular
 
     @app.shell_context_processor

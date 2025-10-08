@@ -1,0 +1,33 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<h2>Licenças de {{ cliente.nome_empresa }}</h2>
+<table class="table table-striped">
+    <thead>
+        <tr>
+            <th>Produto</th>
+            <th>Chave</th>
+            <th>Status</th>
+            <th>Data Ativação</th>
+            <th>Data Expiração</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for licenca in licencas %}
+        <tr>
+            <td>{{ licenca.produto.nome_produto }}</td>
+            <td>{{ licenca.chave_licenca }}</td>
+            <td>{{ licenca.status }}</td>
+            <td>{{ licenca.data_ativacao or '-' }}</td>
+            <td>{{ licenca.data_expiracao or '-' }}</td>
+        </tr>
+        {% else %}
+        <tr>
+            <td colspan="5">Nenhuma licença vinculada</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+<a href="{{ url_for('main.clientes_listar') }}" class="btn btn-secondary">Voltar</a>
+{% endblock %}
+

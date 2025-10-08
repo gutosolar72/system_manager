@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="mb-0">Gestão de Produtos</h1>
+    <a href="{{ url_for('main.cadastrar_produto') }}" class="btn btn-primary">
+        <i class="bi bi-plus-lg"></i> Novo Produto
+    </a>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        Lista de Produtos
+    </div>
+    <div class="card-body">
+        {% if produtos %}
+            <div class="table-responsive">
+                <table class="table table-striped table-hover mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Nome do Produto</th>
+                            <th>SKU</th>
+                            <th>Preço Mensal Base</th>
+                            <th class="text-end">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for produto in produtos %}
+                        <tr>
+                            <td>{{ produto.nome_produto }}</td>
+                            <td>{{ produto.sku }}</td>
+                            <td>R$ {{ produto.preco_mensal_base }}</td>
+                            <td class="text-end">
+                                <a href="{{ url_for('main.editar_produto', produto_id=produto.id) }}" class="btn btn-sm btn-warning" title="Editar Produto">
+                                    <i class="bi bi-pencil-square"></i>
+                                </a>
+                                <button type="button" class="btn btn-sm btn-danger" title="Excluir Produto"
+                                    data-bs-toggle="modal"
+                                    data-bs-target="#confirmDeleteModal"
+                                    data-produto-id="{{ produto.id }}"
+                                    data-produto-nome="{{ produto.nome_produto }}">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="alert alert-secondary text-center mb-0">
+                Nenhum produto cadastrado ainda.
+                <a href="{{ url_for('main.cadastrar_produto') }}" class="alert-link">Clique aqui para cadastrar o primeiro!</a>
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block modals %}
+<!-- Modal de Exclusão -->
+<div class="modal fade" id="confirmDeleteModal" tabindex="-1" aria-labelledby="confirmDeleteModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="confirmDeleteModalLabel">Confirmar Exclusão</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+      </div>
+      <div class="modal-body">
+        Você tem certeza que deseja excluir o produto <strong id="produtoNomeModal"></strong>?
+        <small class="text-danger">Esta ação não pode ser desfeita.</small>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+        <form id="deleteForm" action="" method="post" style="display: inline;">
+            <button type="submit" class="btn btn-danger">Sim, Excluir</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const confirmDeleteModalEl = document.getElementById('confirmDeleteModal');
+    if (!confirmDeleteModalEl) return;
+
+    const confirmDeleteModal = new bootstrap.Modal(confirmDeleteModalEl);
+
+    confirmDeleteModalEl.addEventListener('show.bs.modal', function (event) {
+        const button = event.relatedTarget;
+        const produtoId = button.getAttribute('data-produto-id');
+        const produtoNome = button.getAttribute('data-produto-nome');
+
+        confirmDeleteModalEl.querySelector('#produtoNomeModal').textContent = produtoNome;
+        confirmDeleteModalEl.querySelector('#deleteForm').action = `/produtos/excluir/${produtoId}`;
+    });
+});
+</script>
+{% endblock %}
+

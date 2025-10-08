@@ -1,8 +1,8 @@
-from flask import render_template, flash, redirect, url_for, request
+from flask import render_template, flash, redirect, url_for, request, jsonify
 from flask_login import current_user, login_user, logout_user, login_required
 from app.main import bp # Importar bp do __init__.py da main
-from app.models import Usuario, Cliente, Integrador, Contato, AuditoriaLog
-from app.main.forms import LoginForm, ClienteForm, IntegradorForm # Importar forms diretamente
+from app.models import Usuario, Cliente, Integrador, Contato, Licenca, Produto, AuditoriaLog
+from app.main.forms import LoginForm, ClienteForm, IntegradorForm, ProdutoForm # Importar forms diretamente
 from werkzeug.security import check_password_hash
 from sqlalchemy import or_
 from app.extensions import db # Importar db de app.extensions
@@ -273,4 +273,125 @@ def excluir_integrador(id):
     db.session.commit()
     flash(f"Integrador \"{integrador.nome_empresa}\" foi excluído com sucesso.", "success")
     return redirect(url_for("main.listar_integradores"))
+
+#@app.route('/clientes/<int:cliente_id>/licencas')
+@login_required
+#def licencas(cliente_id):
+#    cliente = Cliente.query.get_or_404(cliente_id)
+#    licencas = Licenca.query.filter_by(cliente_id=cliente_id).all()
+#    return render_template('licencas/licencas.html', cliente=cliente, licencas=licencas)
+
+@bp.route('/licencas')
+@login_required
+def licencas_lista():
+    licencas = Licenca.query.all()
+    return render_template('licencas/licencas.html', licencas=licencas)
+
+@bp.route('/licencas/vincular/<int:licenca_id>', methods=['GET', 'POST'])
+@login_required
+def vincular_chave(licenca_id):
+    licenca = Licenca.query.get_or_404(licenca_id)
+    clientes = Cliente.query.all()  # lista de clientes para selecionar
+
+    if request.method == 'POST':
+        cliente_id = request.form.get('cliente_id')
+        dia_faturamento = request.form.get('dia_faturamento')
+
+        if not cliente_id:
+            flash('Selecione um cliente', 'danger')
+            return redirect(request.url)
+
+        licenca.cliente_id = int(cliente_id)
+        licenca.dia_faturamento = int(dia_faturamento) if dia_faturamento else None
+        db.session.commit()
+        flash('Licença vinculada com sucesso', 'success')
+        return redirect(url_for('main.licencas_lista'))
+
+    return render_template('licencas/vincular_chave.html', licenca=licenca, clientes=clientes)
+
+@bp.route('/clientes/<int:cliente_id>/licencas')
+@login_required
+def cliente_licencas(cliente_id):
+    cliente = Cliente.query.get_or_404(cliente_id)
+    licencas = Licenca.query.filter_by(cliente_id=cliente.id).all()
+    return render_template('clientes/cliente_licencas.html', cliente=cliente, licencas=licencas)
+
+@bp.route('/clientes/<int:cliente_id>/licencas/json')
+@login_required
+def cliente_licencas_json(cliente_id):
+    cliente = Cliente.query.get_or_404(cliente_id)
+    licencas = Licenca.query.filter_by(cliente_id=cliente.id).all()
+
+    licencas_data = []
+    for l in licencas:
+        licencas_data.append({
+            'id': l.id,
+            'produto': l.produto.nome_produto if l.produto else '',
+            'chave_licenca': l.chave_licenca,
+            'status': l.status
+        })
+
+    return jsonify({'licencas': licencas_data})
+
+# LISTAR PRODUTOS
+@bp.route('/produtos')
+@login_required
+def lista_produtos():
+    produtos = Produto.query.order_by(Produto.nome_produto).all()
+    return render_template('produtos/lista_produtos.html', produtos=produtos)
+
+# CADASTRAR PRODUTO
+@bp.route('/produtos/cadastrar', methods=['GET', 'POST'])
+@login_required
+def cadastrar_produto():
+    form = ProdutoForm()
+    if form.validate_on_submit():
+        produto = Produto(
+            nome_produto=form.nome_produto.data,
+            sku=form.sku.data,
+            descricao=form.descricao.data,
+            preco_mensal_base=form.preco_mensal_base.data,
+            modulos_inclusos=json.dumps(form.modulos_inclusos.data or [])
+        )
+        db.session.add(produto)
+        db.session.commit()
+        flash('Produto cadastrado com sucesso!', 'success')
+        return redirect(url_for('main.lista_produtos'))
+
+    return render_template('produtos/cadastrar_produto.html', form=form, produto=None)
+
+# EDITAR PRODUTO
+@bp.route('/produtos/<int:produto_id>/editar', methods=['GET', 'POST'])
+@login_required
+def editar_produto(produto_id):
+    produto = Produto.query.get_or_404(produto_id)
+    dados_antigos = {c.name: getattr(produto, c.name) for c in produto.__table__.columns}
+
+    if request.method == 'POST':
+        produto.nome_produto = request.form.get('nome_produto')
+        produto.sku = request.form.get('sku')
+        produto.descricao = request.form.get('descricao')
+        produto.preco_mensal_base = request.form.get('preco_mensal_base')
+        produto.modulos_inclusos = request.form.get('modulos_inclusos') or '[]'
+
+        dados_novos = {c.name: getattr(produto, c.name) for c in produto.__table__.columns}
+        log_auditoria("ATUALIZACAO", tabela_afetada="produtos", registro_id=produto.id, detalhes={"dados_antigos": dados_antigos, "dados_novos": dados_novos})
+
+        db.session.commit()
+        flash('Produto atualizado com sucesso!', 'success')
+        return redirect(url_for('main.lista_produtos'))
+
+    return render_template('produtos/cadastrar_produto.html', produto=produto)
+
+# EXCLUIR PRODUTO
+@bp.route('/produtos/excluir/<int:produto_id>', methods=['POST'])
+@login_required
+def excluir_produto(produto_id):
+    produto = Produto.query.get_or_404(produto_id)
+    dados_excluidos = {c.name: getattr(produto, c.name) for c in produto.__table__.columns}
+    log_auditoria("EXCLUSAO", tabela_afetada="produtos", registro_id=produto.id, detalhes={"dados_excluidos": dados_excluidos})
+    db.session.delete(produto)
+    db.session.commit()
+    flash('Produto excluído com sucesso!', 'success')
+    return redirect(url_for('main.lista_produtos'))
 

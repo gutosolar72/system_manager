@@ -1,5 +1,5 @@
 from flask_wtf import FlaskForm
-from wtforms import StringField, PasswordField, SubmitField, BooleanField, SelectField, TextAreaField, IntegerField
+from wtforms import StringField, PasswordField, SubmitField, BooleanField, SelectField, TextAreaField, IntegerField, DecimalField
 from wtforms.validators import DataRequired, Length, Email, EqualTo, Optional, ValidationError, Regexp
 from app.models import Integrador, Usuario # Importar modelos de app.models
 
@@ -84,3 +84,10 @@ class IntegradorForm(FlaskForm):
     def validate_email_contato(self, field):
         pass
 
+class ProdutoForm(FlaskForm):
+    nome_produto = StringField('Nome do Produto', validators=[DataRequired()])
+    sku = StringField('SKU', validators=[DataRequired()])
+    descricao = TextAreaField('Descrição')
+    preco_mensal_base = DecimalField('Preço Mensal Base', validators=[DataRequired()])
+    modulos_inclusos = TextAreaField('Módulos Inclusos (JSON)')
+    submit = SubmitField('Salvar')

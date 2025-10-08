@@ -1,0 +1,28 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<h2>Vincular Licença #{{ licenca.id }}</h2>
+
+<form method="POST">
+    <div class="mb-3">
+        <label for="cliente_id" class="form-label">Cliente</label>
+        <select class="form-select" name="cliente_id" id="cliente_id" required>
+            <option value="">Selecione</option>
+            {% for cliente in clientes %}
+            <option value="{{ cliente.id }}" {% if licenca.cliente_id == cliente.id %}selected{% endif %}>
+                {{ cliente.nome_empresa }}
+            </option>
+            {% endfor %}
+        </select>
+    </div>
+
+    <div class="mb-3">
+        <label for="dia_faturamento" class="form-label">Dia do faturamento</label>
+        <input type="number" class="form-control" name="dia_faturamento" id="dia_faturamento" value="{{ licenca.dia_faturamento or 1 }}" min="1" max="31">
+    </div>
+
+    <button type="submit" class="btn btn-primary">Vincular</button>
+    <a href="{{ url_for('main.licencas_lista') }}" class="btn btn-secondary">Cancelar</a>
+</form>
+{% endblock %}
+
