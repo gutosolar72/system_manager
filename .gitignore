@@ -18,3 +18,4 @@ instance/
 .DS_Store
 Thumbs.db
 
+system_manager.ini

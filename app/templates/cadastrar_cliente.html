@@ -21,14 +21,6 @@
             <span style="color: red;">[{{ error }}]</span>
             {% endfor %}
         </p>
-        <p>
-            {{ form.dia_faturamento.label }}  
-
-            {{ form.dia_faturamento(size=5) }}
-            {% for error in form.dia_faturamento.errors %}
-            <span style="color: red;">[{{ error }}]</span>
-            {% endfor %}
-        </p>
         <p>{{ form.submit() }}</p>
     </form>
 {% endblock %}

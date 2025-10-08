@@ -42,12 +42,11 @@ class Cliente(db.Model):
     uf = db.Column(db.String(2), nullable=True)
     cep = db.Column(db.String(9), nullable=True)  # CAMPO ADICIONADO
     telefone = db.Column(db.String(20), nullable=True)
-    dia_faturamento = db.Column(db.Integer, nullable=False)
     data_cadastro = db.Column(db.TIMESTAMP, server_default=db.func.current_timestamp())
 
     # Relacionamentos
     contatos = db.relationship('Contato', back_populates='cliente', cascade="all, delete-orphan")
-    equipamentos = db.relationship('Equipamento', backref='cliente', lazy=True)
+    licencas = db.relationship('Licencas', backref='cliente', lazy=True)
 
 class Contato(db.Model):
     __tablename__ = 'contatos'
@@ -74,7 +73,7 @@ class Produto(db.Model):
     modulos_inclusos = db.Column(db.Text, nullable=False) # JSON como string
 
     # Relacionamento
-    equipamentos = db.relationship('Equipamento', backref='produto', lazy=True)
+    licencas = db.relationship('Licencas', backref='produto', lazy=True)
 
     @property
     def modulos(self):
@@ -84,21 +83,22 @@ class Produto(db.Model):
     def modulos(self, value):
         self.modulos_inclusos = json.dumps(value)
 
-class Equipamento(db.Model):
-    __tablename__ = 'equipamentos'
+class Licencas(db.Model):
+    __tablename__ = 'licencas'
     id = db.Column(db.Integer, primary_key=True)
     produto_id = db.Column(db.Integer, db.ForeignKey('produtos.id'), nullable=False)
     cliente_id = db.Column(db.Integer, db.ForeignKey('clientes.id'), nullable=False)
     chave_licenca = db.Column(db.String(255), unique=True, nullable=False)
     descricao = db.Column(db.String(255), nullable=True)
     status = db.Column(db.Enum('pendente', 'ativo', 'bloqueado'), nullable=False, default='pendente')
+    dia_faturamento = db.Column(db.Integer, nullable=False)
     data_ativacao = db.Column(db.TIMESTAMP, nullable=True)
     data_expiracao = db.Column(db.Date, nullable=True)
     ultima_verificacao = db.Column(db.TIMESTAMP, nullable=True)
     modulos_override = db.Column(db.Text, nullable=True) # JSON como string
 
     # Relacionamentos
-    pagamentos = db.relationship('HistoricoPagamento', backref='equipamento', lazy=True)
+    pagamentos = db.relationship('HistoricoPagamento', backref='licenca', lazy=True)
 
     @property
     def modulos_custom(self):
@@ -111,7 +111,7 @@ class Equipamento(db.Model):
 class HistoricoPagamento(db.Model):
     __tablename__ = 'historico_pagamentos'
     id = db.Column(db.Integer, primary_key=True)
-    equipamento_id = db.Column(db.Integer, db.ForeignKey('equipamentos.id'), nullable=False)
+    licenca_id = db.Column(db.Integer, db.ForeignKey('licencas.id'), nullable=False)
     valor_pago = db.Column(db.Numeric(10, 2), nullable=False)
     data_pagamento = db.Column(db.Date, nullable=False)
     periodo_referencia_inicio = db.Column(db.Date, nullable=False)

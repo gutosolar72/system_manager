@@ -113,7 +113,6 @@ def cadastrar_cliente():
             uf=form.uf.data.upper(),
             cep=form.cep.data, # Campo CEP adicionado
             telefone=form.telefone.data,
-            dia_faturamento=form.dia_faturamento.data
         )
         db.session.add(novo_cliente)
         db.session.flush() 

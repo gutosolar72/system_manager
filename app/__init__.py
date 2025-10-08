@@ -24,7 +24,7 @@ def create_app(config_class=Config):
             'db': db,
             'Usuario': models.Usuario,
             'Cliente': models.Cliente,
-            'Equipamento': models.Equipamento,
+            'Licencas': models.Licencas,
             'Integrador': models.Integrador,
             'Produto': models.Produto,
             'Contato': models.Contato,

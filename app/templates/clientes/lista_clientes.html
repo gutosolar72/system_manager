@@ -1,4 +1,3 @@
-<!-- /deploy/system_manager/app/templates/clientes/lista_clientes.html -->
 {% extends "base.html" %}
 
 {% block content %}
@@ -13,20 +12,17 @@
     <!-- Card para a Busca e Filtros -->
     <div class="card mb-4">
         <div class="card-body">
-            <!-- MUDANÇA 1: Aponte a ação para a própria página de listagem -->
             <form action="{{ url_for('main.listar_clientes') }}" method="get" class="row g-3 align-items-center">
                 <div class="col-auto flex-grow-1">
                     <label for="busca" class="visually-hidden">Buscar</label>
-                    <!-- MUDANÇA 2: Preencha o valor do campo com o termo de busca, se existir -->
-                    <input type="text" class="form-control" id="busca" name="busca" 
-                           placeholder="Buscar por nome ou CNPJ..." 
+                    <input type="text" class="form-control" id="busca" name="busca"
+                           placeholder="Buscar por nome ou CNPJ..."
                            value="{{ termo_busca or '' }}">
                 </div>
                 <div class="col-auto">
                     <button type="submit" class="btn btn-secondary">
                         <i class="bi bi-search"></i> Buscar
                     </button>
-                    <!-- Botão para limpar a busca -->
                     <a href="{{ url_for('main.listar_clientes') }}" class="btn btn-outline-secondary">Limpar</a>
                 </div>
             </form>
@@ -46,7 +42,6 @@
                             <tr>
                                 <th scope="col">Nome da Empresa</th>
                                 <th scope="col">CNPJ</th>
-                                <th scope="col" class="text-center">Dia Faturamento</th>
                                 <th scope="col" class="text-end">Ações</th>
                             </tr>
                         </thead>
@@ -55,9 +50,8 @@
                             <tr>
                                 <td>{{ cliente.nome_empresa }}</td>
                                 <td>{{ cliente.cnpj }}</td>
-                                <td class="text-center">{{ cliente.dia_faturamento }}</td>
                                 <td class="text-end">
-                                    <a href="#" class="btn btn-sm btn-info" title="Ver Equipamentos">
+                                    <a href="#" class="btn btn-sm btn-info" title="Ver Licenças">
                                         <i class="bi bi-hdd-stack"></i>
                                     </a>
                                     <a href="{{ url_for('main.editar_cliente', id=cliente.id) }}" class="btn btn-sm btn-warning" title="Editar Cliente">
@@ -96,8 +90,6 @@
       </div>
       <div class="modal-body">
         Você tem certeza que deseja excluir o cliente <strong id="clienteNomeModal"></strong>?
-          
-
         <small class="text-danger">Esta ação não pode ser desfeita.</small>
       </div>
       <div class="modal-footer">
@@ -111,17 +103,14 @@
 </div>
 {% endblock %}
 
-<!-- Adicionamos o JavaScript para fazer o modal funcionar -->
 {% block scripts %}
 <script>
 document.addEventListener('DOMContentLoaded', function () {
     const confirmDeleteModalEl = document.getElementById('confirmDeleteModal');
     if (!confirmDeleteModalEl) return;
 
-    // Inicializa o modal
     const confirmDeleteModal = new bootstrap.Modal(confirmDeleteModalEl);
 
-    // Adiciona listener ao evento de mostrar o modal
     confirmDeleteModalEl.addEventListener('show.bs.modal', function (event) {
         const button = event.relatedTarget;
         const clienteId = button.getAttribute('data-cliente-id');
@@ -133,3 +122,4 @@ document.addEventListener('DOMContentLoaded', function () {
 });
 </script>
 {% endblock %}
+

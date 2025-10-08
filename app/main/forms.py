@@ -34,7 +34,6 @@ class ClienteForm(FlaskForm):
 
     # Configurações
     integrador_id = SelectField('Integrador Responsável', coerce=int, validators=[DataRequired()])
-    dia_faturamento = IntegerField('Dia do Faturamento', validators=[DataRequired()])
     
     submit = SubmitField('Salvar')
 
