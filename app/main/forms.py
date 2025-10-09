@@ -33,14 +33,14 @@ class ClienteForm(FlaskForm):
     cep = StringField('CEP', validators=[Optional(), Length(max=9)]) # CAMPO ADICIONADO
 
     # Configurações
-    integrador_id = SelectField('Integrador Responsável', coerce=int, validators=[DataRequired()])
+    #integrador_id = SelectField('Integrador Responsável', coerce=int, validators=[DataRequired()])
     
     submit = SubmitField('Salvar')
 
-    def __init__(self, *args, **kwargs):
-        super(ClienteForm, self).__init__(*args, **kwargs)
-        # Popula o campo de seleção de integradores
-        self.integrador_id.choices = [(i.id, i.nome_empresa) for i in Integrador.query.order_by(Integrador.nome_empresa).all()]
+    #def __init__(self, *args, **kwargs):
+    #    super(ClienteForm, self).__init__(*args, **kwargs)
+    #    # Popula o campo de seleção de integradores
+    #    self.integrador_id.choices = [(i.id, i.nome_empresa) for i in Integrador.query.order_by(Integrador.nome_empresa).all()]
 
     def validate_cnpj(self, field):
         if field.data:

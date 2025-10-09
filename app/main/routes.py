@@ -104,7 +104,6 @@ def cadastrar_cliente():
     form = ClienteForm()
     if form.validate_on_submit():
         novo_cliente = Cliente(
-            integrador_id=form.integrador_id.data, # Usar o integrador_id do formulário
             nome_empresa=form.nome_empresa.data,
             cnpj=form.cnpj.data,
             endereco=form.endereco.data,
@@ -122,6 +121,10 @@ def cadastrar_cliente():
         db.session.commit()
         flash("Cliente cadastrado com sucesso!", "success")
         return redirect(url_for("main.listar_clientes"))
+        
+    # --- DEBUG: Mostrar erros de validação ---
+    if request.method == "POST":
+        print("FORM ERRORS:", form.errors)
     
     return render_template("clientes/cadastrar_cliente.html", title="Cadastrar Cliente", form=form)
 
@@ -308,6 +311,14 @@ def vincular_chave(licenca_id):
         return redirect(url_for('main.licencas_lista'))
 
     return render_template('licencas/vincular_chave.html', licenca=licenca, clientes=clientes)
+
+@bp.route('/apagar_licenca/<int:id>', methods=['POST'])
+@login_required
+def apagar_licenca(id):
+    licenca = Licenca.query.get_or_404(id)
+    db.session.delete(licenca)
+    db.session.commit()
+    return '', 204
 
 @bp.route('/clientes/<int:cliente_id>/licencas')
 @login_required

@@ -61,7 +61,6 @@
                                     </div>
                                 </div>
                             </div>
-                            <!-- CAMPO CEP ADICIONADO -->
                             <div class="mb-3">
                                 {{ form.cep.label(class="form-label") }}
                                 {{ form.cep(class="form-control", placeholder="00000-000", id="cep") }}
@@ -71,12 +70,10 @@
 
                     <!-- Coluna da Direita -->
                     <div class="col-md-6">
+                        <!-- Não há mais integrador vinculado aqui, então podemos remover -->
                         <fieldset class="border p-3 mb-3">
                             <legend class="w-auto px-2 h6">Configurações</legend>
-                            <div class="mb-3">
-                                {{ form.integrador_id.label(class="form-label") }}
-                                {{ form.integrador_id(class="form-select") }}
-                            </div>
+                            <p class="text-muted">O integrador será vinculado no contrato.</p>
                         </fieldset>
                     </div>
                 </div>
@@ -97,10 +94,10 @@
 {{ super() }}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery.mask/1.14.16/jquery.mask.min.js"></script>
 <script>
-$(document ).ready(function(){
+$(document).ready(function(){
     $("#cnpj").mask("00.000.000/0000-00", {reverse: true});
     $("#telefone").mask("(00) 0000-0000");
-    $("#cep").mask("00000-000"); // MÁSCARA PARA O CEP
+    $("#cep").mask("00000-000");
 });
 </script>
 {% endblock %}
