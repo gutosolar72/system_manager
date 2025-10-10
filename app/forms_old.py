@@ -80,8 +80,7 @@ class IntegradorForm(FlaskForm):
 class ContratoForm(FlaskForm):
     cliente_id = SelectField('Cliente', coerce=int, validators=[DataRequired()])
     integrador_id = SelectField('Integrador', coerce=int, validators=[DataRequired()])
-    licenca_id = SelectField('Licença', coerce=int, validators=[Optional()])
-    data_faturamento = DateField('Data de Faturamento', validators=[Optional()])
+    dia_faturamento = IntegerField('Dia do Faturamento', validators=[Optional(), NumberRange(min=1, max=31)])
     valor_mensal = DecimalField('Valor Mensal', validators=[Optional()])
     status = SelectField('Status', choices=[('pendente','Pendente'),('ativo','Ativo'),('cancelado','Cancelado')], validators=[DataRequired()])
     observacoes = TextAreaField('Observações', validators=[Optional()])
@@ -91,6 +90,4 @@ class ContratoForm(FlaskForm):
         super(ContratoForm, self).__init__(*args, **kwargs)
         self.cliente_id.choices = [(c.id, c.nome_empresa) for c in Cliente.query.order_by(Cliente.nome_empresa).all()]
         self.integrador_id.choices = [(i.id, i.nome_empresa) for i in Integrador.query.order_by(Integrador.nome_empresa).all()]
-        # Licença será opcional e carregada dinamicamente conforme cliente ou produto
-        self.licenca_id.choices = [(0, 'Selecione...')]  # Placeholder inicial
 

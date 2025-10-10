@@ -86,29 +86,22 @@ class Licenca(db.Model):
     __tablename__ = 'licencas'
     id = db.Column(db.Integer, primary_key=True)
     produto_id = db.Column(db.Integer, db.ForeignKey('produtos.id'), nullable=False)
-    cliente_id = db.Column(db.Integer, db.ForeignKey('clientes.id'), nullable=True)  # agora opcional
+    cliente_id = db.Column(db.Integer, db.ForeignKey('clientes.id'), nullable=True)
     chave_licenca = db.Column(db.String(255), unique=True, nullable=False)
     uuid = db.Column(db.String(64), nullable=True)
     mac = db.Column(db.String(32), nullable=True)
     descricao = db.Column(db.String(255), nullable=True)
     status = db.Column(db.Enum('pendente','ativo','bloqueado'), nullable=False, default='pendente')
-    #dia_faturamento = db.Column(db.Integer, nullable=True)
     data_ativacao = db.Column(db.TIMESTAMP, nullable=True)
     data_expiracao = db.Column(db.Date, nullable=True)
     ultima_verificacao = db.Column(db.TIMESTAMP, nullable=True)
     modulos_override = db.Column(db.Text, nullable=True)
-    contrato_id = db.Column(db.Integer, db.ForeignKey('contratos.id'), nullable=True)
 
     # Relacionamentos
     cliente = db.relationship('Cliente', back_populates='licencas')
     produto = db.relationship('Produto', back_populates='licencas')
-    contrato = db.relationship(
-        'Contrato',
-        back_populates='licenca',
-        uselist=False,
-        foreign_keys=[contrato_id]  # <-- especificando qual coluna usar
-    )
-    pagamentos = db.relationship('HistoricoPagamento', back_populates='licenca', lazy=True)
+    contrato = db.relationship('Contrato', back_populates='licenca', uselist=False)  # inverso de Contrato.licenca
+    historico_pagamentos = db.relationship('HistoricoPagamentos', back_populates='licenca', lazy=True)
 
     @property
     def modulos_custom(self):
@@ -124,7 +117,7 @@ class Contrato(db.Model):
     cliente_id = db.Column(db.Integer, db.ForeignKey('clientes.id'), nullable=False)
     integrador_id = db.Column(db.Integer, db.ForeignKey('integradores.id'), nullable=False)
     licenca_id = db.Column(db.Integer, db.ForeignKey('licencas.id'), nullable=True)
-    data_faturamento = db.Column(db.Date, nullable=True)
+    dia_faturamento = db.Column(db.Integer, nullable=True)
     valor_mensal = db.Column(db.Numeric(10,2), nullable=True)
     observacoes = db.Column(db.Text, nullable=True)
     status = db.Column(db.Enum('pendente','ativo','cancelado'), nullable=False, default='pendente')
@@ -133,32 +126,9 @@ class Contrato(db.Model):
     # Relacionamentos
     cliente = db.relationship('Cliente', back_populates='contratos')
     integrador = db.relationship('Integrador', back_populates='contratos')
-    licenca = db.relationship(
-        'Licenca',
-        back_populates='contrato',
-        uselist=False,
-        foreign_keys=[Licenca.contrato_id]  # <-- especificando a coluna correta
-    )
-    pagamentos = db.relationship('HistoricoPagamento', back_populates='contrato', lazy=True)
+    licenca = db.relationship('Licenca', back_populates='contrato', uselist=False)  # um-para-um
+    historico_pagamentos = db.relationship('HistoricoPagamentos', back_populates='contrato', lazy=True)
 
-
-
-class HistoricoPagamento(db.Model):
-    __tablename__ = 'historico_pagamentos'
-    id = db.Column(db.Integer, primary_key=True)
-    contrato_id = db.Column(db.Integer, db.ForeignKey('contratos.id'), nullable=False)
-    licenca_id = db.Column(db.Integer, db.ForeignKey('licencas.id'), nullable=True)
-    valor_pago = db.Column(db.Numeric(10, 2), nullable=False)
-    data_pagamento = db.Column(db.Date, nullable=False)
-    periodo_referencia_inicio = db.Column(db.Date, nullable=False)
-    periodo_referencia_fim = db.Column(db.Date, nullable=False)
-    observacao = db.Column(db.Text, nullable=True)
-
-    # Relacionamentos
-    contrato = db.relationship('Contrato', back_populates='pagamentos')
-    licenca = db.relationship('Licenca', back_populates='pagamentos')
-
-# --- Modelos de Suporte e Autenticação ---
 
 class Usuario(UserMixin, db.Model):
     __tablename__ = 'usuarios'
@@ -203,4 +173,38 @@ class AuditoriaLog(db.Model):
     @detalhes_dict.setter
     def detalhes_dict(self, value):
         self.detalhes = json.dumps(value, ensure_ascii=False)
+class HistoricoPagamentos(db.Model):
+    __tablename__ = 'historico_pagamentos'
+    id = db.Column(db.Integer, primary_key=True)
+    licenca_id = db.Column(db.Integer, db.ForeignKey('licencas.id'), nullable=False)
+    contrato_id = db.Column(db.Integer, db.ForeignKey('contratos.id'), nullable=True)
+    valor_pago = db.Column(db.Numeric(10, 2), nullable=False)
+    data_pagamento = db.Column(db.Date, nullable=False)
+    periodo_referencia_inicio = db.Column(db.Date, nullable=False)
+    periodo_referencia_fim = db.Column(db.Date, nullable=False)
+    observacao = db.Column(db.Text)
 
+    # Campos CNAB 240 / Boleto
+    nosso_numero = db.Column(db.String(20))
+    numero_documento = db.Column(db.String(20))
+    linha_digitavel = db.Column(db.String(60))
+    codigo_banco = db.Column(db.String(3))
+    status_boleto = db.Column(db.Enum('emitido', 'pago', 'cancelado', 'erro', 'pendente'), default='pendente')
+    data_emissao = db.Column(db.Date)
+    data_vencimento = db.Column(db.Date)
+    data_credito = db.Column(db.Date)
+
+    # Relacionamentos
+    licenca = db.relationship('Licenca', back_populates='historico_pagamentos')
+    contrato = db.relationship('Contrato', back_populates='historico_pagamentos')
+
+    def __repr__(self):
+        return f"<Pagamento {self.id} | Licença {self.licenca_id} | Valor {self.valor_pago}>"
+
+    @property
+    def pago(self):
+        return self.status_boleto == 'pago'
+
+    @property
+    def em_aberto(self):
+        return self.status_boleto in ('emitido', 'pendente')

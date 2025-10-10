@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+
+{% block title %}Faturas - Contrato #{{ contrato.id }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2>Faturas do Contrato #{{ contrato.id }} - {{ contrato.cliente.nome_empresa }}</h2>
+        <a href="{{ url_for('main.listar_contratos') }}" class="btn btn-secondary">
+            <i class="bi bi-arrow-left"></i> Voltar
+        </a>
+    </div>
+
+    <div class="mb-3">
+        <a href="{{ url_for('main.ver_faturas', contrato_id=contrato.id, status='pagas') }}" class="btn btn-success btn-sm">Pagas</a>
+        <a href="{{ url_for('main.ver_faturas', contrato_id=contrato.id, status='nao_pagas') }}" class="btn btn-danger btn-sm">Não Pagas</a>
+        <a href="{{ url_for('main.ver_faturas', contrato_id=contrato.id) }}" class="btn btn-info btn-sm">Todas</a>
+    </div>
+
+    <div class="card">
+        <div class="card-body p-0">
+            <table class="table table-striped mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>ID</th>
+                        <th>Licença</th>
+                        <th>Valor</th>
+                        <th>Período</th>
+                        <th>Status</th>
+                        <th>Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for fatura in faturas %}
+                    <tr>
+                        <td>{{ fatura.id }}</td>
+                        <td>#{{ fatura.licenca_id }}</td>
+                        <td>{{ fatura.valor_pago }}</td>
+                        <td>{{ fatura.periodo_referencia_inicio }} - {{ fatura.periodo_referencia_fim }}</td>
+                        <td>{{ fatura.status_boleto.capitalize() }}</td>
+                        <td>
+                            {% if fatura.status_boleto != 'pago' %}
+                            <a href="{{ url_for('main.novo_pagamento_fatura', fatura_id=fatura.id) }}" class="btn btn-sm btn-primary">
+                                <i class="bi bi-cash-stack"></i> Lançar Pagamento
+                            </a>
+                            {% else %}
+                            -
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="6" class="text-center">Nenhuma fatura encontrada.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
+

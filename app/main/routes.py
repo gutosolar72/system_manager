@@ -1,12 +1,15 @@
 from flask import render_template, flash, redirect, url_for, request, jsonify
 from flask_login import current_user, login_user, logout_user, login_required
 from app.main import bp # Importar bp do __init__.py da main
-from app.models import Usuario, Cliente, Integrador, Contato, Licenca, Produto, AuditoriaLog
-from app.main.forms import LoginForm, ClienteForm, IntegradorForm, ProdutoForm # Importar forms diretamente
+from app.models import Usuario, Cliente, Integrador, Contato, Licenca, Produto, Contrato, HistoricoPagamentos, AuditoriaLog
+from app.main.forms import LoginForm, ClienteForm, IntegradorForm, ProdutoForm, ContratoForm, PagamentoForm # Importar forms diretamente
 from werkzeug.security import check_password_hash
 from sqlalchemy import or_
 from app.extensions import db # Importar db de app.extensions
 import json
+from datetime import timedelta, date
+
+
 
 # =============================================================================
 # FUNÇÃO DE AUDITORIA
@@ -294,23 +297,31 @@ def licencas_lista():
 @login_required
 def vincular_chave(licenca_id):
     licenca = Licenca.query.get_or_404(licenca_id)
-    clientes = Cliente.query.all()  # lista de clientes para selecionar
+
+    # Pega contratos que ainda não têm licença vinculada
+    contratos = Contrato.query.filter(Contrato.licenca_id == None).all()
 
     if request.method == 'POST':
-        cliente_id = request.form.get('cliente_id')
-        dia_faturamento = request.form.get('dia_faturamento')
-
-        if not cliente_id:
-            flash('Selecione um cliente', 'danger')
+        contrato_id = request.form.get('contrato_id')
+        if not contrato_id:
+            flash('Selecione um contrato', 'danger')
             return redirect(request.url)
 
-        licenca.cliente_id = int(cliente_id)
-        licenca.dia_faturamento = int(dia_faturamento) if dia_faturamento else None
+        contrato = Contrato.query.get(int(contrato_id))
+        if not contrato:
+            flash('Contrato inválido', 'danger')
+            return redirect(request.url)
+
+        # Atualiza ambos os lados
+        licenca.contrato_id = contrato.id
+        contrato.licenca_id = licenca.id
+
         db.session.commit()
         flash('Licença vinculada com sucesso', 'success')
         return redirect(url_for('main.licencas_lista'))
 
-    return render_template('licencas/vincular_chave.html', licenca=licenca, clientes=clientes)
+    return render_template('licencas/vincular_chave.html', licenca=licenca, contratos=contratos)
+
 
 @bp.route('/apagar_licenca/<int:id>', methods=['POST'])
 @login_required
@@ -406,3 +417,136 @@ def excluir_produto(produto_id):
     flash('Produto excluído com sucesso!', 'success')
     return redirect(url_for('main.lista_produtos'))
 
+
+# --- LISTAR CONTRATOS ---
+@bp.route('/contratos')
+@login_required
+def listar_contratos():
+    contratos = Contrato.query.order_by(Contrato.id.desc()).all()
+    return render_template('contratos/lista_contratos.html', contratos=contratos)
+
+
+# --- NOVO CONTRATO ---
+@bp.route('/contrato/novo', methods=['GET', 'POST'])
+@login_required
+def novo_contrato():
+    form = ContratoForm()
+    print(hasattr(ContratoForm, 'dia_faturamento'))
+    if form.validate_on_submit():
+        contrato = Contrato(
+            cliente_id=form.cliente_id.data,
+            integrador_id=form.integrador_id.data,
+            #licenca_id=form.licenca_id.data if form.licenca_id.data != 0 else None,
+            dia_faturamento=form.dia_faturamento.data,
+            valor_mensal=form.valor_mensal.data,
+            status=form.status.data,
+            observacoes=form.observacoes.data
+        )
+        db.session.add(contrato)
+        db.session.commit()
+        flash('Contrato cadastrado com sucesso!', 'success')
+        return redirect(url_for('main.listar_contratos'))
+
+    return render_template('contratos/cadastrar_contrato.html', form=form)
+
+
+# --- EDITAR CONTRATO ---
+@bp.route('/contrato/<int:contrato_id>/editar', methods=['GET', 'POST'])
+@login_required
+def editar_contrato(contrato_id):
+    contrato = Contrato.query.get_or_404(contrato_id)
+    form = ContratoForm(obj=contrato)
+    if form.validate_on_submit():
+        contrato.cliente_id = form.cliente_id.data
+        contrato.integrador_id = form.integrador_id.data
+        #contrato.licenca_id = form.licenca_id.data if form.licenca_id.data != 0 else None
+        contrato.dia_faturamento = form.dia_faturamento.data
+        contrato.valor_mensal = form.valor_mensal.data
+        contrato.status = form.status.data
+        contrato.observacoes = form.observacoes.data
+        db.session.commit()
+        flash('Contrato atualizado com sucesso!', 'success')
+        return redirect(url_for('main.listar_contratos'))
+
+    return render_template('contratos/editar_contrato.html', form=form, contrato=contrato)
+
+
+# --- EXCLUIR CONTRATO ---
+@bp.route('/contrato/<int:contrato_id>/excluir', methods=['POST', 'GET'])
+@login_required
+def excluir_contrato(contrato_id):
+    contrato = Contrato.query.get_or_404(contrato_id)
+    db.session.delete(contrato)
+    db.session.commit()
+    flash('Contrato excluído com sucesso!', 'success')
+    return redirect(url_for('main.listar_contratos'))
+
+#------- PAGAMENTOS ----
+
+@bp.route('/pagamento/novo/<int:fatura_id>', methods=['GET', 'POST'])
+@login_required
+def novo_pagamento_fatura(fatura_id):
+    # Busca a fatura
+    fatura = HistoricoPagamentos.query.get_or_404(fatura_id)
+
+    # Formulário apenas para observação
+    form = PagamentoForm()
+
+    if request.method == 'POST' and form.validate_on_submit():
+        # Atualiza a fatura existente
+        fatura.valor_pago = fatura.contrato.valor_mensal
+        fatura.data_pagamento = date.today()
+        fatura.status_boleto = 'pago'  # Força como pago
+        fatura.observacao = form.observacao.data or 'Fatura gerada automaticamente'
+
+        # Atualiza expiração e status da licença (se existir)
+        if fatura.licenca:
+            nova_data_expiracao = fatura.periodo_referencia_fim
+            fatura.licenca.data_expiracao = nova_data_expiracao
+            fatura.licenca.status = 'Ativo'
+            db.session.add(fatura.licenca)
+
+        # Confirma alterações
+        db.session.commit()
+
+        flash('Pagamento registrado e licença ativada com sucesso!', 'success')
+        return redirect(url_for('main.ver_faturas', contrato_id=fatura.contrato.id))
+
+    # Formata vigência para exibir no template
+    periodo_inicial = fatura.periodo_referencia_inicio.strftime('%d/%m/%Y') if fatura.periodo_referencia_inicio else ''
+    periodo_final = fatura.periodo_referencia_fim.strftime('%d/%m/%Y') if fatura.periodo_referencia_fim else ''
+
+    return render_template(
+        'pagamentos/novo.html',
+        form=form,
+        periodo_inicial=periodo_inicial,
+        periodo_final=periodo_final,
+        fatura=fatura
+    )
+
+
+
+@bp.route('/pagamentos')
+@login_required
+def pagamentos_lista():
+    pagamentos = HistoricoPagamentos.query.order_by(HistoricoPagamentos.data_pagamento.desc()).all()
+    return render_template('pagamentos/lista.html', pagamentos=pagamentos)
+
+############ FATURAS #######
+@bp.route('/contrato/<int:contrato_id>/faturas')
+@login_required
+def ver_faturas(contrato_id):
+    contrato = Contrato.query.get_or_404(contrato_id)
+
+    # Filtrar por status se passado na query string
+    status_filter = request.args.get('status')
+    query = contrato.historico_pagamentos  # lista de faturas
+
+    if status_filter == 'pagas':
+        faturas = [f for f in query if f.status_boleto == 'pago']
+    elif status_filter == 'nao_pagas':
+        faturas = [f for f in query if f.status_boleto != 'pago']
+    else:
+        faturas = query
+
+    return render_template('contratos/faturas.html', contrato=contrato, faturas=faturas, status_filter=status_filter)

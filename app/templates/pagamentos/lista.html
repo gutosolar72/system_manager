@@ -1,0 +1,40 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="container mt-4">
+    <h2>Histórico de Pagamentos</h2>
+
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Licença</th>
+                <th>Contrato</th>
+                <th>Valor</th>
+                <th>Data Pagamento</th>
+                <th>Status</th>
+                <th>Período</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for p in pagamentos %}
+            <tr>
+                <td>{{ p.id }}</td>
+                <td>{{ p.licenca_id }}</td>
+                <td>{{ p.contrato_id or '-' }}</td>
+                <td>R$ {{ "%.2f"|format(p.valor_pago or 0) }}</td>
+                <td>{{ p.data_pagamento.strftime("%d/%m/%Y") if p.data_pagamento else '-' }}</td>
+                <td>{{ p.status_boleto }}</td>
+                <td>
+                    {% if p.periodo_referencia_inicio and p.periodo_referencia_fim %}
+                        {{ p.periodo_referencia_inicio.strftime("%d/%m/%Y") }} → {{ p.periodo_referencia_fim.strftime("%d/%m/%Y") }}
+                    {% else %}
+                        -
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}
+
