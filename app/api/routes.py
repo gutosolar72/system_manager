@@ -1,7 +1,7 @@
 from flask import request, jsonify
 from datetime import datetime
 from app.extensions import db
-from app.models import Licenca, Produto
+from app.models import Licenca, Produto, Contrato
 import hashlib
 
 from app.api import bp_api
@@ -17,7 +17,6 @@ def ativar_licenca():
         "produto": "...",
     }
     """
-
     data = request.get_json()
     uuid = data.get('uuid')
     mac = data.get('mac')
@@ -41,24 +40,26 @@ def ativar_licenca():
 
     # Busca licença existente
     licenca = Licenca.query.filter_by(chave_licenca=chave_licenca).first()
-    if licenca:
-        return jsonify({
-            'status': licenca.status,
-            'valid_until': licenca.data_expiracao.isoformat() if licenca.data_expiracao else None
-        }), 200
+    if not licenca:
+        # Cria nova licença
+        licenca = Licenca(
+            produto_id=produto.id,
+            chave_licenca=chave_licenca,
+            uuid=uuid,
+            mac=mac,
+            status='pendente',
+            data_ativacao=datetime.utcnow(),
+            ultima_verificacao=datetime.utcnow()
+        )
+        db.session.add(licenca)
+        db.session.commit()  # commit para gerar ID e permitir vincular contrato depois
 
-    # Cria nova licença
-    nova_licenca = Licenca(
-        produto_id=produto.id,
-        chave_licenca=chave_licenca,
-        uuid=uuid,
-        mac=mac,
-        status='pendente',
-        data_ativacao=datetime.utcnow(),
-        ultima_verificacao=datetime.utcnow()
-    )
-    db.session.add(nova_licenca)
-    db.session.commit()
+    # Busca contrato vinculado, se houver
+    contrato = Contrato.query.filter_by(licenca_id=licenca.id).first()
 
-    return jsonify({'status': 'pendente', 'valid_until': None}), 201
+    return jsonify({
+        'status': contrato.status if contrato else licenca.status,
+        'valid_until': licenca.data_expiracao.isoformat() if licenca.data_expiracao else None,
+        'modulos_override': contrato.modulos_override if contrato else None
+    }), 200
 

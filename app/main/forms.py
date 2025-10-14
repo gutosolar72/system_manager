@@ -1,5 +1,5 @@
 from flask_wtf import FlaskForm
-from wtforms import StringField, PasswordField, SubmitField, BooleanField, SelectField, TextAreaField, IntegerField, DecimalField, DateField
+from wtforms import StringField, PasswordField, SubmitField, BooleanField, SelectField, TextAreaField, IntegerField, DecimalField, DateField, HiddenField
 from wtforms.validators import DataRequired, Length, Email, EqualTo, Optional, ValidationError, Regexp, NumberRange
 from app.models import Integrador, Usuario # Importar modelos de app.models
 
@@ -101,22 +101,25 @@ from app.models import Cliente, Integrador, Licenca
 class ContratoForm(FlaskForm):
     cliente_id = SelectField('Cliente', coerce=int, validators=[DataRequired()])
     integrador_id = SelectField('Integrador', coerce=int, validators=[DataRequired()])
-    #licenca_id = SelectField('Licença', coerce=int, validators=[Optional()])
+    licenca_id = HiddenField('Licença', validators=[Optional()])
     dia_faturamento = IntegerField('Dia do Faturamento', validators=[Optional(), NumberRange(min=1, max=31)])
     valor_mensal = DecimalField('Valor Mensal', validators=[Optional()])
-    status = SelectField('Status', 
-                         choices=[('pendente','Pendente'),('ativo','Ativo'),('cancelado','Cancelado')],
+    status = SelectField('Status',
+                         choices=[('pendente', 'Pendente'), ('ativo', 'Ativo'), ('cancelado', 'Cancelado')],
                          validators=[DataRequired()])
+    modulos_override = TextAreaField('Módulos Override', validators=[Optional()])
     observacoes = TextAreaField('Observações', validators=[Optional()])
     submit = SubmitField('Salvar')
 
     def __init__(self, *args, **kwargs):
         super(ContratoForm, self).__init__(*args, **kwargs)
         # Carrega clientes e integradores
-        self.cliente_id.choices = [(c.id, c.nome_empresa) for c in Cliente.query.order_by(Cliente.nome_empresa).all()]
-        self.integrador_id.choices = [(i.id, i.nome_empresa) for i in Integrador.query.order_by(Integrador.nome_empresa).all()]
-        # Licença será opcional e carregada dinamicamente conforme cliente ou produto
-        #self.licenca_id.choices = [(0, 'Selecione...')]  # placeholder inicial
+        self.cliente_id.choices = [
+            (c.id, c.nome_empresa) for c in Cliente.query.order_by(Cliente.nome_empresa).all()
+        ]
+        self.integrador_id.choices = [
+            (i.id, i.nome_empresa) for i in Integrador.query.order_by(Integrador.nome_empresa).all()
+        ]
 
 class PagamentoForm(FlaskForm):
     

@@ -90,12 +90,9 @@ class Licenca(db.Model):
     chave_licenca = db.Column(db.String(255), unique=True, nullable=False)
     uuid = db.Column(db.String(64), nullable=True)
     mac = db.Column(db.String(32), nullable=True)
-    descricao = db.Column(db.String(255), nullable=True)
-    status = db.Column(db.Enum('pendente','ativo','bloqueado'), nullable=False, default='pendente')
     data_ativacao = db.Column(db.TIMESTAMP, nullable=True)
     data_expiracao = db.Column(db.Date, nullable=True)
     ultima_verificacao = db.Column(db.TIMESTAMP, nullable=True)
-    modulos_override = db.Column(db.Text, nullable=True)
 
     # Relacionamentos
     cliente = db.relationship('Cliente', back_populates='licencas')
@@ -103,13 +100,6 @@ class Licenca(db.Model):
     contrato = db.relationship('Contrato', back_populates='licenca', uselist=False)  # inverso de Contrato.licenca
     historico_pagamentos = db.relationship('HistoricoPagamentos', back_populates='licenca', lazy=True)
 
-    @property
-    def modulos_custom(self):
-        return json.loads(self.modulos_override) if self.modulos_override else None
-
-    @modulos_custom.setter
-    def modulos_custom(self, value):
-        self.modulos_override = json.dumps(value)
 
 class Contrato(db.Model):
     __tablename__ = 'contratos'
@@ -122,6 +112,7 @@ class Contrato(db.Model):
     observacoes = db.Column(db.Text, nullable=True)
     status = db.Column(db.Enum('pendente','ativo','cancelado'), nullable=False, default='pendente')
     data_criacao = db.Column(db.TIMESTAMP, server_default=db.func.current_timestamp())
+    modulos_override = db.Column(db.Text, nullable=True)
 
     # Relacionamentos
     cliente = db.relationship('Cliente', back_populates='contratos')

@@ -431,19 +431,21 @@ def listar_contratos():
 @login_required
 def novo_contrato():
     form = ContratoForm()
-    print(hasattr(ContratoForm, 'dia_faturamento'))
     if form.validate_on_submit():
         contrato = Contrato(
             cliente_id=form.cliente_id.data,
             integrador_id=form.integrador_id.data,
+            licenca_id = int(form.licenca_id.data) if form.licenca_id.data else None,
             #licenca_id=form.licenca_id.data if form.licenca_id.data != 0 else None,
             dia_faturamento=form.dia_faturamento.data,
             valor_mensal=form.valor_mensal.data,
             status=form.status.data,
+            modulos_override=form.modulos_override.data,
             observacoes=form.observacoes.data
         )
         db.session.add(contrato)
         db.session.commit()
+    
         flash('Contrato cadastrado com sucesso!', 'success')
         return redirect(url_for('main.listar_contratos'))
 
@@ -459,12 +461,14 @@ def editar_contrato(contrato_id):
     if form.validate_on_submit():
         contrato.cliente_id = form.cliente_id.data
         contrato.integrador_id = form.integrador_id.data
-        #contrato.licenca_id = form.licenca_id.data if form.licenca_id.data != 0 else None
+        contrato.licenca_id = form.licenca_id.data if form.licenca_id.data != 0 else None
         contrato.dia_faturamento = form.dia_faturamento.data
         contrato.valor_mensal = form.valor_mensal.data
         contrato.status = form.status.data
+        contrato.modulos_override = form.modulos_override.data
         contrato.observacoes = form.observacoes.data
         db.session.commit()
+
         flash('Contrato atualizado com sucesso!', 'success')
         return redirect(url_for('main.listar_contratos'))
 

@@ -15,6 +15,7 @@
         <div class="card-body">
             <form method="POST" action="">
                 {{ form.hidden_tag() }}
+                {{ form.licenca_id(type="hidden") }}
 
                 <div class="mb-3">
                     {{ form.cliente_id.label(class="form-label") }}
@@ -39,6 +40,15 @@
                 <div class="mb-3">
                     {{ form.status.label(class="form-label") }}
                     {{ form.status(class="form-select") }}
+                </div>
+
+                <!-- 🆕 Campo para módulos override -->
+                <div class="mb-3">
+                    {{ form.modulos_override.label(class="form-label") }}
+                    {{ form.modulos_override(class="form-control", rows="3", placeholder="Ex: {'modulo1': true, 'modulo2': false}") }}
+                    <div class="form-text">
+                        Defina os módulos personalizados da licença (JSON ou texto simples).
+                    </div>
                 </div>
 
                 <div class="mb-3">

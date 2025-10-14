@@ -40,6 +40,10 @@
                     {{ form.status.label(class="form-label") }}
                     {{ form.status(class="form-select") }}
                 </div>
+                <div class="mb-3">
+                    {{ form.modulos_override.label(class="form-label") }}
+                    {{ form.modulos_override(class="form-control", rows="3", placeholder="Ex: módulo1, módulo2, módulo3") }}
+                </div>
 
                 <div class="mb-3">
                     {{ form.observacoes.label(class="form-label") }}
