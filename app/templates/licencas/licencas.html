@@ -18,7 +18,8 @@
                         <tr>
                             <th style="width: 50px;">ID</th>
                             <th style="width: 130px;">Produto</th>
-                            <th style="width: 250px;">Chave</th>
+                            <th style="width: 200px;">Chave</th>
+                            <th style="width: 120px;">ID Contrato</th>
                             <th>Contrato</th>
                             <th style="width: 100px;">Expiração</th>
                             <th class="text-center" style="width: 180px;">Ações</th>
@@ -27,7 +28,7 @@
                     <tbody>
                         {% for licenca in licencas %}
                         <tr>
-                            <td>{{ licenca.id }}</td>
+                            <td>{{licenca.id }}</td>
                             <td>{{ licenca.produto.nome_produto if licenca.produto else '-' }}</td>
                             <td>
                                 <code>{{ licenca.chave_licenca[:8] }}...{{ licenca.chave_licenca[-8:] }}</code>
@@ -36,6 +37,13 @@
                                         title="Ver licença completa">
                                     <i class="fas fa-eye"></i>
                                 </button>
+                            </td>
+                            <td>
+                                <center>
+                                    {% if licenca.contrato %}
+                                        {{ licenca.contrato.id }}
+                                    {% endif %}
+                                </center> 
                             </td>
                             <td>
                                 {% if licenca.contrato %}

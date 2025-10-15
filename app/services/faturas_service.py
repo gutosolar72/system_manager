@@ -38,6 +38,14 @@ def gerar_primeira_fatura(contrato):
     )
 
     db.session.add(pagamento)
+    
+    contrato.status = "pendente"
+    if contrato.licenca:
+        contrato.licenca.data_ativacao = datetime.now()
+        contrato.licenca.data_expiracao = datetime.now()  # <── expiração = agora
+        contrato.licenca.ultima_verificacao = datetime.now()
+
+    db.session.commit()
     db.session.commit()
     print(f"✅ Fatura inicial criada para contrato {contrato.id}")
     return pagamento
