@@ -8,6 +8,7 @@ from sqlalchemy import or_
 from app.extensions import db # Importar db de app.extensions
 import json
 from datetime import timedelta, date
+from app.services.faturas_service import gerar_primeira_fatura
 
 
 
@@ -317,6 +318,8 @@ def vincular_chave(licenca_id):
         contrato.licenca_id = licenca.id
 
         db.session.commit()
+        gerar_primeira_fatura(contrato)
+        
         flash('Licença vinculada com sucesso', 'success')
         return redirect(url_for('main.licencas_lista'))
 

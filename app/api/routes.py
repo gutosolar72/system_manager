@@ -47,7 +47,6 @@ def ativar_licenca():
             chave_licenca=chave_licenca,
             uuid=uuid,
             mac=mac,
-            status='pendente',
             data_ativacao=datetime.utcnow(),
             ultima_verificacao=datetime.utcnow()
         )
@@ -58,7 +57,7 @@ def ativar_licenca():
     contrato = Contrato.query.filter_by(licenca_id=licenca.id).first()
 
     return jsonify({
-        'status': contrato.status if contrato else licenca.status,
+        'status': contrato.status if contrato else None,
         'valid_until': licenca.data_expiracao.isoformat() if licenca.data_expiracao else None,
         'modulos_override': contrato.modulos_override if contrato else None
     }), 200
