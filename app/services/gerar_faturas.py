@@ -11,10 +11,11 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')
 
 from app import create_app, db
 from app.models import Contrato, Licenca, HistoricoPagamentos
+from app.services.gerar_boletos_pagbank import gerar_boleto_pagbank
+
 
 app = create_app()
 app.app_context().push()
-
 
 def gerar_faturas():
     hoje = datetime.today().date()
@@ -28,24 +29,18 @@ def gerar_faturas():
     if licencas_vencidas:
         print(f"Licenças pendentes atualizadas: {len(licencas_vencidas)}")
 
-    # --- 2️⃣ Gera faturas do dia
+    # --- 2️⃣ Gera faturas para todos os contratos ativos
     contratos = Contrato.query.filter_by(status='ativo').all()
 
     for contrato in contratos:
         if not contrato.licenca:
             continue
 
-        dia_faturamento = contrato.dia_faturamento or 1
-
-        # Só gera fatura se o dia de faturamento for hoje
-        if dia_faturamento != hoje.day:
-            continue
-
-        # Calcula vigência: do dia de faturamento atual até 1 dia antes do próximo
+        # Calcula o período de referência (25 até 24 do mês seguinte)
         periodo_inicio = hoje
         periodo_fim = (periodo_inicio + relativedelta(months=1)) - timedelta(days=1)
 
-        # Evita duplicidade
+        # Evita duplicidade de fatura
         existente = HistoricoPagamentos.query.filter_by(
             contrato_id=contrato.id,
             periodo_referencia_inicio=periodo_inicio,
@@ -53,9 +48,10 @@ def gerar_faturas():
         ).first()
 
         if existente:
+            print(f"⚠️ Fatura já existente para contrato {contrato.id}")
             continue
 
-        # Cria fatura pendente
+        # Cria nova fatura pendente
         pagamento = HistoricoPagamentos(
             licenca_id=contrato.licenca.id,
             contrato_id=contrato.id,
@@ -68,10 +64,18 @@ def gerar_faturas():
         )
 
         db.session.add(pagamento)
+        db.session.commit()  # precisa do ID antes de gerar o boleto
+
+        # Gera boleto usando o serviço externo
+        try:
+            #gerar_boleto_pagbank(pagamento.id)
+            print(f"✅ Fatura e boleto gerados para contrato {contrato.id}")
+        except Exception as e:
+            print(f"❌ Erro ao gerar boleto para contrato {contrato.id}: {e}")
+
         faturas_criadas += 1
 
-    db.session.commit()
-    print(f'Faturas geradas: {faturas_criadas}')
+    print(f"\n📄 Total de faturas criadas: {faturas_criadas}\n")
 
 
 if __name__ == '__main__':

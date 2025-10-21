@@ -1,10 +1,13 @@
 from flask import request, jsonify
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 from app.extensions import db
 from app.models import Licenca, Produto, Contrato
 import hashlib
 
 from app.api import bp_api
+    
+BR_TZ = timezone(timedelta(hours=-3))
+now = datetime.now(BR_TZ)
 
 @bp_api.route('/ativar_licenca', methods=['POST'])
 def ativar_licenca():
@@ -47,8 +50,8 @@ def ativar_licenca():
             chave_licenca=chave_licenca,
             uuid=uuid,
             mac=mac,
-            data_ativacao=datetime.utcnow(),
-            ultima_verificacao=datetime.utcnow()
+            data_ativacao=now,
+            ultima_verificacao=now
         )
         db.session.add(licenca)
         db.session.commit()  # commit para gerar ID e permitir vincular contrato depois
@@ -59,6 +62,6 @@ def ativar_licenca():
     return jsonify({
         'status': contrato.status if contrato else None,
         'valid_until': licenca.data_expiracao.isoformat() if licenca.data_expiracao else None,
-        'modulos_override': contrato.modulos_override if contrato else None
+        'modulos_override': contrato.modulos if contrato else None
     }), 200
 

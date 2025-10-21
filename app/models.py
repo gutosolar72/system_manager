@@ -3,25 +3,44 @@ from flask_login import UserMixin
 from werkzeug.security import generate_password_hash, check_password_hash
 from sqlalchemy.dialects.mysql import LONGTEXT
 import json
+from datetime import datetime
 
 # --- Modelos Principais ---
 
 class Integrador(db.Model):
     __tablename__ = 'integradores'
+
     id = db.Column(db.Integer, primary_key=True)
     nome_empresa = db.Column(db.String(255), nullable=False)
     cnpj = db.Column(db.String(18), unique=True, nullable=True)
-    endereco = db.Column(db.String(255), nullable=True)
+    email = db.Column(db.String(255), nullable=True)
+    ddd = db.Column(db.String(3), nullable=True)
+    telefone = db.Column(db.String(20), nullable=True)
+    logradouro = db.Column(db.String(100), nullable=True)
+    numero = db.Column(db.String(20), nullable=True)
+    complemento = db.Column(db.String(100), nullable=True)
     bairro = db.Column(db.String(100), nullable=True)
     cidade = db.Column(db.String(100), nullable=True)
-    uf = db.Column(db.String(2), nullable=True)
+    estado = db.Column(db.String(2), nullable=True)
     cep = db.Column(db.String(9), nullable=True)
-    telefone = db.Column(db.String(20), nullable=True)
     data_cadastro = db.Column(db.TIMESTAMP, server_default=db.func.current_timestamp())
 
     # Relacionamentos
     contratos = db.relationship('Contrato', back_populates='integrador', lazy=True)
     contatos = db.relationship('Contato', back_populates='integrador', cascade="all, delete-orphan")
+
+    @property
+    def endereco_completo(self):
+        partes = [
+            self.logradouro,
+            f"Nº {self.numero}" if self.numero else None,
+            self.complemento,
+            self.bairro,
+            self.cidade,
+            self.estado,
+            self.cep
+        ]
+        return ', '.join([p for p in partes if p])
 
     def get_contato_principal(self):
         for contato in self.contatos:
@@ -29,23 +48,43 @@ class Integrador(db.Model):
                 return contato
         return None
 
+
 class Cliente(db.Model):
     __tablename__ = 'clientes'
+
     id = db.Column(db.Integer, primary_key=True)
     nome_empresa = db.Column(db.String(255), nullable=False)
     cnpj = db.Column(db.String(18), unique=True, nullable=True)
-    endereco = db.Column(db.String(255), nullable=True)
+    email = db.Column(db.String(255), nullable=True)
+    ddd = db.Column(db.String(3), nullable=True)
+    telefone = db.Column(db.String(20), nullable=True)
+    logradouro = db.Column(db.String(100), nullable=True)
+    numero = db.Column(db.String(20), nullable=True)
+    complemento = db.Column(db.String(100), nullable=True)
     bairro = db.Column(db.String(100), nullable=True)
     cidade = db.Column(db.String(100), nullable=True)
-    uf = db.Column(db.String(2), nullable=True)
+    estado = db.Column(db.String(2), nullable=True)
     cep = db.Column(db.String(9), nullable=True)
-    telefone = db.Column(db.String(20), nullable=True)
     data_cadastro = db.Column(db.TIMESTAMP, server_default=db.func.current_timestamp())
 
     # Relacionamentos
     contatos = db.relationship('Contato', back_populates='cliente', cascade="all, delete-orphan")
     contratos = db.relationship('Contrato', back_populates='cliente', lazy=True)
     licencas = db.relationship('Licenca', back_populates='cliente', lazy=True)
+
+    @property
+    def endereco_completo(self):
+        partes = [
+            self.logradouro,
+            f"Nº {self.numero}" if self.numero else None,
+            self.complemento,
+            self.bairro,
+            self.cidade,
+            self.estado,
+            self.cep
+        ]
+        return ', '.join([p for p in partes if p])
+
 
 class Contato(db.Model):
     __tablename__ = 'contatos'
@@ -62,25 +101,48 @@ class Contato(db.Model):
     integrador = db.relationship('Integrador', back_populates='contatos')
     cliente = db.relationship('Cliente', back_populates='contatos')
 
+
+# ----------------- NOVO: Módulo e associação Produto ↔ Módulo -----------------
+
+produto_modulo = db.Table(
+    'produto_modulo',
+    db.Column('produto_id', db.Integer, db.ForeignKey('produtos.id', ondelete='CASCADE'), primary_key=True),
+    db.Column('modulo_id', db.Integer, db.ForeignKey('modulos.id', ondelete='CASCADE'), primary_key=True)
+)
+
+class Modulo(db.Model):
+    __tablename__ = 'modulos'
+
+    id = db.Column(db.Integer, primary_key=True)
+    nome = db.Column(db.String(100), nullable=False)
+    modulo = db.Column(db.String(20), nullable=False)
+    descricao = db.Column(db.Text)
+    valor = db.Column(db.Numeric(10, 2), default=0)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    # Relacionamento N:N com Produto
+    produtos = db.relationship(
+        'Produto',
+        secondary=produto_modulo,
+        back_populates='modulos'
+    )
+
+
 class Produto(db.Model):
     __tablename__ = 'produtos'
     id = db.Column(db.Integer, primary_key=True)
     nome_produto = db.Column(db.String(255), nullable=False)
-    sku = db.Column(db.String(50), unique=True, nullable=False)
     descricao = db.Column(db.Text, nullable=True)
     preco_mensal_base = db.Column(db.Numeric(10, 2), nullable=False)
-    modulos_inclusos = db.Column(db.Text, nullable=False) # JSON como string
 
-    # Relacionamento
+    # Relacionamentos
     licencas = db.relationship('Licenca', back_populates='produto', lazy=True)
-
-    @property
-    def modulos(self):
-        return json.loads(self.modulos_inclusos) if self.modulos_inclusos else []
-
-    @modulos.setter
-    def modulos(self, value):
-        self.modulos_inclusos = json.dumps(value)
+    modulos = db.relationship(
+        'Modulo',
+        secondary=produto_modulo,
+        back_populates='produtos'
+    )
 
 class Licenca(db.Model):
     __tablename__ = 'licencas'
@@ -106,20 +168,23 @@ class Contrato(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     cliente_id = db.Column(db.Integer, db.ForeignKey('clientes.id'), nullable=False)
     integrador_id = db.Column(db.Integer, db.ForeignKey('integradores.id'), nullable=False)
+    produto_id = db.Column(db.Integer, db.ForeignKey('produtos.id'), nullable=True)
     licenca_id = db.Column(db.Integer, db.ForeignKey('licencas.id'), nullable=True)
     dia_faturamento = db.Column(db.Integer, nullable=True)
     valor_mensal = db.Column(db.Numeric(10,2), nullable=True)
     observacoes = db.Column(db.Text, nullable=True)
     status = db.Column(db.Enum('pendente','ativo','cancelado'), nullable=False, default='pendente')
     data_criacao = db.Column(db.TIMESTAMP, server_default=db.func.current_timestamp())
-    modulos_override = db.Column(db.Text, nullable=True)
+    modulos = db.Column(db.Text)  # continua para compatibilidade com nanosip
 
     # Relacionamentos
     cliente = db.relationship('Cliente', back_populates='contratos')
     integrador = db.relationship('Integrador', back_populates='contratos')
-    licenca = db.relationship('Licenca', back_populates='contrato', uselist=False)  # um-para-um
+    licenca = db.relationship('Licenca', back_populates='contrato', uselist=False)
     historico_pagamentos = db.relationship('HistoricoPagamentos', back_populates='contrato', lazy=True)
 
+
+# ----------------- Usuários e auditoria -----------------
 
 class Usuario(UserMixin, db.Model):
     __tablename__ = 'usuarios'
@@ -145,6 +210,7 @@ class Usuario(UserMixin, db.Model):
 def load_user(user_id):
     return Usuario.query.get(int(user_id))
 
+
 class AuditoriaLog(db.Model):
     __tablename__ = 'auditoria_logs'
     id = db.Column(db.BigInteger, primary_key=True)
@@ -164,6 +230,8 @@ class AuditoriaLog(db.Model):
     @detalhes_dict.setter
     def detalhes_dict(self, value):
         self.detalhes = json.dumps(value, ensure_ascii=False)
+
+
 class HistoricoPagamentos(db.Model):
     __tablename__ = 'historico_pagamentos'
     id = db.Column(db.Integer, primary_key=True)
@@ -199,3 +267,4 @@ class HistoricoPagamentos(db.Model):
     @property
     def em_aberto(self):
         return self.status_boleto in ('emitido', 'pendente')
+

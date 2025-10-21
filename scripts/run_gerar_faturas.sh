@@ -9,7 +9,7 @@ export PYTHONPATH="$PROJECT_DIR:$PYTHONPATH"
 source "$PROJECT_DIR/venv/bin/activate"
 
 # Roda o script Python
-python "$PROJECT_DIR/scripts/gerar_faturas.py"
+python "$PROJECT_DIR/app/services/gerar_faturas.py"
 
 # Desativa virtualenv
 deactivate
