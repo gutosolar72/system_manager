@@ -1,0 +1,155 @@
+import os
+import json
+import requests
+from datetime import datetime, timedelta
+
+# --- Config
+PAGBANK_ORDER_URL = "https://sandbox.api.pagseguro.com/orders"  # endpoint sandbox oficial
+TOKEN = os.environ.get("PAGBANK_TOKEN")
+DRY_RUN = not bool(TOKEN)  # se não tem token, só imprime o payload
+
+# --- Dados do cliente (sacado)
+SACADO = {
+    "cnpj": "22905740000100",
+    "name": "OURIPONTO SOLUCOES EM CONTROLE DE PONTO E ACESSO LTDA",
+    "email": "comercial@ouriponto.com.br",
+    "phone_country": "55",
+    "phone_area": "14",
+    "phone_number": "33021420",
+    "address": {
+        "street": "Rua Rio de Janeiro",
+        "number": "1189",
+        "complement": "casa",
+        "locality": "Centro",
+        "city": "Ourinhos",
+        "region_code": "SP",
+        "postal_code": "19900002",
+        "country": "BRA"
+    }
+}
+
+# --- Produto / item
+ITEM = {
+    "reference_id": "nanosip-001",
+    "name": "NanoSip - Assinatura Mensal",
+    "quantity": 1,
+    "unit_amount_cents": 49900
+}
+
+# --- Data de vencimento (7 dias a partir de hoje)
+VENCIMENTO = (datetime.today().date() + timedelta(days=7)).strftime("%Y-%m-%d")
+
+payload = {
+    "reference_id": f"fatura-teste-{int(datetime.now().timestamp())}",
+    "customer": {
+        "name": SACADO["name"],
+        "email": SACADO["email"],
+        "tax_id": SACADO["cnpj"],
+        "phones": [
+            {
+                "country": SACADO["phone_country"],
+                "area": SACADO["phone_area"],
+                "number": SACADO["phone_number"],
+                "type": "BUSINESS"
+            }
+        ]
+    },
+    "items": [
+        {
+            "reference_id": ITEM["reference_id"],
+            "name": ITEM["name"],
+            "quantity": ITEM["quantity"],
+            "unit_amount": ITEM["unit_amount_cents"]
+        }
+    ],
+    "shipping": {
+        "address": {
+            "street": SACADO["address"]["street"],
+            "number": SACADO["address"]["number"],
+            "complement": SACADO["address"]["complement"],
+            "locality": SACADO["address"]["locality"],
+            "city": SACADO["address"]["city"],
+            "region_code": SACADO["address"]["region_code"],
+            "country": SACADO["address"]["country"],
+            "postal_code": SACADO["address"]["postal_code"]
+        }
+    },
+    "notification_urls": [
+        "https://meusite.com/notificacoes"
+      ],
+    "charges": [
+        {
+            "reference_id": f"charge-{int(datetime.now().timestamp())}",
+            "description": f"Boleto - {ITEM['name']}",
+            "amount": {
+                "value": ITEM["unit_amount_cents"],
+                "currency": "BRL"
+            },
+            "payment_method": {
+                "type": "BOLETO",
+                "boleto": {
+                    "due_date": VENCIMENTO,
+                    "instruction_lines": {
+                        "line_1": "Pague até a data de vencimento.",
+                        "line_2": "Após vencimento, cobrar multa e juros."
+                    },
+                    "holder": {
+                        "name": SACADO["name"],
+                        "tax_id": SACADO["cnpj"],
+                        "email": SACADO["email"],
+                        "address": {
+                            "country": SACADO["address"]["country"],
+                            "region": SACADO["address"]["city"],
+                            "region_code": SACADO["address"]["region_code"],
+                            "city": SACADO["address"]["city"],
+                            "postal_code": SACADO["address"]["postal_code"],
+                            "street": SACADO["address"]["street"],
+                            "number": SACADO["address"]["number"],
+                            "locality": SACADO["address"]["locality"]
+
+                        }
+                    }
+                }
+            }
+        }
+    ]
+}
+
+def pretty_print(obj):
+    print(json.dumps(obj, indent=2, ensure_ascii=False))
+
+def send_to_pagbank(data):
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {TOKEN}"
+    }
+    try:
+        resp = requests.post(PAGBANK_ORDER_URL, json=data, headers=headers, timeout=30)
+    except requests.RequestException as e:
+        print("Erro de conexão ao chamar PagBank:", e)
+        return None
+
+    print("Status:", resp.status_code)
+    print("Headers:", dict(resp.headers))
+    print("Resposta (texto):")
+    print(resp.text[:4000])
+
+    try:
+        return resp.json()
+    except ValueError:
+        print("Resposta não é JSON (ou vazia).")
+        return None
+
+if __name__ == "__main__":
+    print("=== PAYLOAD QUE SERÁ ENVIADO ===")
+    pretty_print(payload)
+
+    if DRY_RUN:
+        print("\n=== DRY RUN: PAGBANK_TOKEN não encontrado. Não será enviado. ===")
+        print("Para enviar ao sandbox:")
+        print("export PAGBANK_TOKEN='SEU_TOKEN_SANDBOX'")
+    else:
+        print("\n=== Enviando para sandbox PagBank... ===")
+        result = send_to_pagbank(payload)
+        print("\n=== RESULTADO (JSON decodificado) ===")
+        pretty_print(result if result is not None else {"error": "sem JSON de resposta"})
