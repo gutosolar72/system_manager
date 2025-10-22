@@ -19,7 +19,6 @@
                     <thead class="table-light">
                         <tr>
                             <th>Nome do Produto</th>
-                            <th>SKU</th>
                             <th>Preço Mensal Base</th>
                             <th class="text-end">Ações</th>
                         </tr>
@@ -28,7 +27,6 @@
                         {% for produto in produtos %}
                         <tr>
                             <td>{{ produto.nome_produto }}</td>
-                            <td>{{ produto.sku }}</td>
                             <td>R$ {{ produto.preco_mensal_base }}</td>
                             <td class="text-end">
                                 <a href="{{ url_for('main.editar_produto', produto_id=produto.id) }}" class="btn btn-sm btn-warning" title="Editar Produto">

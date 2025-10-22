@@ -19,3 +19,5 @@ instance/
 Thumbs.db
 
 system_manager.ini
+
+app/services/credentials/pagseguro.json

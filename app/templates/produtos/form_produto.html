@@ -18,12 +18,6 @@
             </div>
 
             <div class="mb-3">
-                <label for="sku" class="form-label">SKU</label>
-                <input type="text" class="form-control" id="sku" name="sku"
-                       value="{{ produto.sku if produto else '' }}" required>
-            </div>
-
-            <div class="mb-3">
                 <label for="descricao" class="form-label">Descrição</label>
                 <textarea class="form-control" id="descricao" name="descricao" rows="3">{{ produto.descricao if produto else '' }}</textarea>
             </div>
@@ -32,12 +26,19 @@
                 <label for="preco_mensal_base" class="form-label">Preço Mensal Base (R$)</label>
                 <input type="number" class="form-control" id="preco_mensal_base" name="preco_mensal_base"
                        value="{{ produto.preco_mensal_base if produto else '' }}" step="0.01" required>
+
             </div>
 
             <div class="mb-3">
-                <label for="modulos_inclusos" class="form-label">Módulos Inclusos (JSON)</label>
-                <textarea class="form-control" id="modulos_inclusos" name="modulos_inclusos" rows="3">{{ produto.modulos_inclusos if produto else '[]' }}</textarea>
-                <small class="text-muted">Ex.: ["modulo1", "modulo2"]</small>
+                <label class="form-label">{{ form.modulos.label.text }}</label>
+                <div class="d-flex flex-wrap">
+                    {% for subfield in form.modulos %}
+                        <div class="form-check me-3">
+                            {{ subfield(class="form-check-input") }}
+                            <label class="form-check-label">{{ subfield.label.text }}</label>
+                        </div>
+                    {% endfor %}
+                </div>
             </div>
 
             <button type="submit" class="btn btn-primary">Salvar Produto</button>

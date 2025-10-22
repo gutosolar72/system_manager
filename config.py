@@ -1,6 +1,8 @@
 # /deploy/system_manager/config.py
 
 import os
+from datetime import timedelta
+
 
 # Encontra o caminho absoluto da pasta onde este arquivo está.
 # Isso ajuda a evitar problemas com caminhos relativos.
@@ -14,7 +16,7 @@ class Config:
 
     # Chave secreta para proteger formulários e sessões contra ataques (CSRF).
     # É crucial para a segurança do painel administrativo que construiremos.
-    SECRET_KEY = os.environ.get('SECRET_KEY') or os.urandom(24)
+    SECRET_KEY = os.environ.get('SECRET_KEY') or 'p4nN3Z21RxTz'
 
     # --- Configuração do Banco de Dados (MariaDB/MySQL) ---
 
@@ -33,5 +35,9 @@ class Config:
     # todos os comandos SQL que ele executa. Ótimo para depuração.
     # Deixe como False em produção.
     SQLALCHEMY_ECHO = False
-
+    
+    REMEMBER_COOKIE_DURATION = timedelta(days=30)
+    REMEMBER_COOKIE_HTTPONLY = True
+    REMEMBER_COOKIE_SAMESITE = 'Lax'
+    REMEMBER_COOKIE_SECURE = False  # True se estiver usando HTTPS
 

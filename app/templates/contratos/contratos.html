@@ -1,0 +1,161 @@
+{% extends "base.html" %}
+
+{% block title %}Gestão de Contratos - System Manager{% endblock %}
+
+{% block content %}
+<!-- Cabeçalho da Página -->
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="mb-0">Gestão de Contratos</h1>
+    <a href="{{ url_for('main.novo_contrato') }}" class="btn btn-primary">
+        <i class="bi bi-plus-lg"></i> Novo Contrato
+    </a>
+</div>
+
+<!-- Tabela de Contratos -->
+<div class="card">
+    <div class="card-header">
+        Lista de Contratos Cadastrados
+    </div>
+    <div class="card-body p-0">
+        {% if contratos %}
+            <div class="table-responsive">
+                <table class="table table-striped table-hover mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>ID</th>
+                            <th>Cliente</th>
+                            <th>Integrador</th>
+                            <th>Dia Faturamento</th>
+                            <th>Valor Mensal</th>
+                            <th>Status</th>
+                            <th class="text-end">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for contrato in contratos %}
+                        <tr>
+                            <td>{{ contrato.id }}</td>
+                            <td>
+                                {{ contrato.cliente.nome_empresa[:30] }}
+                                <button class="btn btn-link btn-sm text-info ver-nome-completo"
+                                        data-nome="{{ contrato.cliente.nome_empresa }}"
+                                        title="Ver cliente completo">
+                                    <i class="bi bi-eye"></i>
+                                </button>
+                            </td>
+                            <td>
+                                {% if contrato.integrador %}
+                                {{ contrato.integrador.nome_empresa[:30] }}
+                                <button class="btn btn-link btn-sm text-info ver-nome-completo"
+                                        data-nome="{{ contrato.integrador.nome_empresa }}"
+                                        title="Ver integrador completo">
+                                    <i class="bi bi-eye"></i>
+                                </button>
+                                {% else %}
+                                -
+                                {% endif %}
+                            </td>
+                            <td>{{ contrato.dia_faturamento or '-' }}</td>
+                            <td>R$ {{ "%.2f"|format(contrato.valor_mensal) if contrato.valor_mensal else '-' }}</td>
+                            <td>{{ contrato.status.capitalize() }}</td>
+                            <td class="text-end">
+                                <!-- Botão Editar -->
+                                <a href="{{ url_for('main.editar_contrato', contrato_id=contrato.id) }}" class="btn btn-sm btn-warning" title="Editar Contrato">
+                                    <i class="bi bi-pencil-square"></i>
+                                </a>
+
+                                <!-- Botão Ver Faturas -->
+                                <a href="{{ url_for('main.ver_faturas', contrato_id=contrato.id) }}" class="btn btn-sm btn-info" title="Ver Faturas">
+                                    <i class="bi bi-receipt"></i>
+                                </a>
+
+                                <!-- Botão Excluir -->
+                                <button type="button" class="btn btn-sm btn-danger" title="Excluir Contrato"
+                                        data-bs-toggle="modal"
+                                        data-bs-target="#confirmDeleteModal"
+                                        data-contrato-id="{{ contrato.id }}"
+                                        data-contrato-nome="{{ contrato.cliente.nome_empresa }}">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="alert alert-secondary text-center mb-0">
+                Nenhum contrato cadastrado ainda.
+                <a href="{{ url_for('main.novo_contrato') }}" class="alert-link">Clique aqui para cadastrar o primeiro!</a>
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block modals %}
+<!-- Modal de Confirmação de Exclusão -->
+<div class="modal fade" id="confirmDeleteModal" tabindex="-1" aria-labelledby="confirmDeleteModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="confirmDeleteModalLabel">Confirmar Exclusão</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+      </div>
+      <div class="modal-body">
+        Você tem certeza que deseja excluir o contrato do cliente <strong id="contratoClienteNome"></strong>?
+        <small class="text-danger d-block mt-2">Esta ação não pode ser desfeita.</small>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+        <form id="deleteContratoForm" action="" method="post" style="display: inline;">
+            <button type="submit" class="btn btn-danger">Sim, Excluir</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal para Ver Nome Completo -->
+<div class="modal fade" id="modalVerNomeCompleto" tabindex="-1" aria-labelledby="modalVerNomeCompletoLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="modalVerNomeCompletoLabel">Nome Completo</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+      </div>
+      <div class="modal-body">
+        <span id="nomeCompleto" style="white-space: normal; word-break: break-word;"></span>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    // Modal de exclusão
+    const confirmDeleteModalEl = document.getElementById('confirmDeleteModal');
+    if (confirmDeleteModalEl) {
+        confirmDeleteModalEl.addEventListener('show.bs.modal', function (event) {
+            const button = event.relatedTarget;
+            const contratoId = button.getAttribute('data-contrato-id');
+            const contratoNome = button.getAttribute('data-contrato-nome');
+            confirmDeleteModalEl.querySelector('#contratoClienteNome').textContent = contratoNome;
+            confirmDeleteModalEl.querySelector('#deleteContratoForm').action = `/contrato/${contratoId}/excluir`;
+        });
+    }
+
+    // Modal de nome completo
+    document.querySelectorAll(".ver-nome-completo").forEach(btn => {
+        btn.addEventListener("click", () => {
+            const nome = btn.dataset.nome;
+            document.getElementById("nomeCompleto").textContent = nome;
+            new bootstrap.Modal(document.getElementById("modalVerNomeCompleto")).show();
+        });
+    });
+});
+</script>
+{% endblock %}
+
