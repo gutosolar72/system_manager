@@ -7,7 +7,9 @@ from werkzeug.security import check_password_hash
 from sqlalchemy import or_
 from app.extensions import db
 import json
-from datetime import date
+from datetime import datetime, date
+from dateutil.relativedelta import relativedelta
+from calendar import monthrange
 from app.services.primeira_fatura import gerar_primeira_fatura
 
 
@@ -339,7 +341,20 @@ def vincular_chave(licenca_id):
             flash('Contrato inválido', 'danger')
             return redirect(request.url)
 
+        hoje = datetime.today().date()
+        if hoje.day > 24:
+            """Seta a data de expiração para o dia 5 do outro mês se a licença for vinculada depois do dia 24."""
+            proximo_mes = hoje + relativedelta(months=2)
+            print(f"Hoje é dia {hoje.day}, data de expiração setada o dia 5 do outro mes.")
+            dt_expiracao = date(proximo_mes.year, proximo_mes.month, 5)
+        else: 
+            """ Senão seta para o dia 5 do proximo mês """
+            proximo_mes = hoje + relativedelta(months=1)
+            print(f"Hoje é dia {hoje.day}, data de expiração setada o dia 5 do outro mes.")
+            dt_expiracao = date(proximo_mes.year, proximo_mes.month, 5)
+
         licenca.contrato_id = contrato.id
+        licenca.data_expiracao = dt_expiracao
         contrato.licenca_id = licenca.id
         contrato.status = "ativo"
         db.session.commit()
