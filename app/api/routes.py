@@ -62,6 +62,6 @@ def ativar_licenca():
     return jsonify({
         'status': contrato.status if contrato else None,
         'valid_until': licenca.data_expiracao.isoformat() if licenca.data_expiracao else None,
-        'modulos_override': contrato.modulos if contrato else None
+        'modulos': contrato.modulos if contrato else None
     }), 200
 
