@@ -152,6 +152,7 @@ class Licenca(db.Model):
     chave_licenca = db.Column(db.String(255), unique=True, nullable=False)
     uuid = db.Column(db.String(64), nullable=True)
     mac = db.Column(db.String(32), nullable=True)
+    mac_gw = db.Column(db.String(17), nullable=True)
     data_ativacao = db.Column(db.TIMESTAMP, nullable=True)
     data_expiracao = db.Column(db.Date, nullable=True)
     ultima_verificacao = db.Column(db.TIMESTAMP, nullable=True)
@@ -170,7 +171,8 @@ class Contrato(db.Model):
     integrador_id = db.Column(db.Integer, db.ForeignKey('integradores.id'), nullable=False)
     produto_id = db.Column(db.Integer, db.ForeignKey('produtos.id'), nullable=True)
     licenca_id = db.Column(db.Integer, db.ForeignKey('licencas.id'), nullable=True)
-    dia_faturamento = db.Column(db.Integer, nullable=True)
+    local_instalacao = db.Column(db.Text, nullable=True)
+    dia_vencimento_boleto = db.Column(db.Integer, nullable=True)
     valor_mensal = db.Column(db.Numeric(10,2), nullable=True)
     observacoes = db.Column(db.Text, nullable=True)
     status = db.Column(db.Enum('pendente','ativo','cancelado'), nullable=False, default='pendente')
@@ -232,23 +234,72 @@ class AuditoriaLog(db.Model):
         self.detalhes = json.dumps(value, ensure_ascii=False)
 
 
+#class HistoricoPagamentos(db.Model):
+#    __tablename__ = 'historico_pagamentos'
+#    id = db.Column(db.Integer, primary_key=True)
+#    licenca_id = db.Column(db.Integer, db.ForeignKey('licencas.id'), nullable=False)
+#    contrato_id = db.Column(db.Integer, db.ForeignKey('contratos.id'), nullable=True)
+#    valor_pago = db.Column(db.Numeric(10, 2), nullable=False)
+#    data_pagamento = db.Column(db.Date, nullable=False)
+#    periodo_referencia_inicio = db.Column(db.Date, nullable=False)
+#    periodo_referencia_fim = db.Column(db.Date, nullable=False)
+#    observacao = db.Column(db.Text)
+#
+#    # Campos CNAB 240 / Boleto
+#    nosso_numero = db.Column(db.String(20))
+#    numero_documento = db.Column(db.String(20))
+#    linha_digitavel = db.Column(db.String(60))
+#    codigo_banco = db.Column(db.String(3))
+#    status_boleto = db.Column(db.Enum('emitido', 'pago', 'cancelado', 'erro', 'pendente'), default='pendente')
+#    data_emissao = db.Column(db.Date)
+#    data_vencimento = db.Column(db.Date)
+#    data_credito = db.Column(db.Date)
+#
+#    # Relacionamentos
+#    licenca = db.relationship('Licenca', back_populates='historico_pagamentos')
+#    contrato = db.relationship('Contrato', back_populates='historico_pagamentos')
+#
+#    def __repr__(self):
+#        return f"<Pagamento {self.id} | Licença {self.licenca_id} | Valor {self.valor_pago}>"
+#
+#    @property
+#    def pago(self):
+#        return self.status_boleto == 'pago'
+#
+#    @property
+#    def em_aberto(self):
+#        return self.status_boleto in ('emitido', 'pendente')
+#
+
 class HistoricoPagamentos(db.Model):
     __tablename__ = 'historico_pagamentos'
+
     id = db.Column(db.Integer, primary_key=True)
+
+    # --- Gateway de pagamento (agnóstico) ---
+    gateway = db.Column(db.String(30))  # ex: 'asaas'
+    gateway_payment_id = db.Column(db.String(64), index=True)
+    gateway_invoice_id = db.Column(db.String(64))
+    gateway_payload = db.Column(db.JSON)
+
     licenca_id = db.Column(db.Integer, db.ForeignKey('licencas.id'), nullable=False)
     contrato_id = db.Column(db.Integer, db.ForeignKey('contratos.id'), nullable=True)
+
     valor_pago = db.Column(db.Numeric(10, 2), nullable=False)
-    data_pagamento = db.Column(db.Date, nullable=False)
+    data_pagamento = db.Column(db.Date, nullable=True)
     periodo_referencia_inicio = db.Column(db.Date, nullable=False)
     periodo_referencia_fim = db.Column(db.Date, nullable=False)
     observacao = db.Column(db.Text)
 
-    # Campos CNAB 240 / Boleto
+    # Campos bancários / boleto (domínio financeiro)
     nosso_numero = db.Column(db.String(20))
     numero_documento = db.Column(db.String(20))
     linha_digitavel = db.Column(db.String(60))
     codigo_banco = db.Column(db.String(3))
-    status_boleto = db.Column(db.Enum('emitido', 'pago', 'cancelado', 'erro', 'pendente'), default='pendente')
+    status_boleto = db.Column(
+        db.Enum('emitido', 'pago', 'cancelado', 'erro', 'pendente'),
+        default='pendente'
+    )
     data_emissao = db.Column(db.Date)
     data_vencimento = db.Column(db.Date)
     data_credito = db.Column(db.Date)
@@ -267,4 +318,51 @@ class HistoricoPagamentos(db.Model):
     @property
     def em_aberto(self):
         return self.status_boleto in ('emitido', 'pendente')
+
+class ClienteGateway(db.Model):
+    __tablename__ = 'clientes_gateway'
+
+    id = db.Column(db.Integer, primary_key=True)
+
+    # Relacionamento interno
+    cliente_id = db.Column(
+        db.Integer,
+        db.ForeignKey('clientes.id', ondelete='CASCADE'),
+        nullable=False
+    )
+
+    # Gateway (agnóstico)
+    gateway = db.Column(db.String(30), nullable=False)  # ex: 'asaas'
+    ambiente = db.Column(db.Enum('sandbox', 'producao'), nullable=False)
+
+    gateway_customer_id = db.Column(db.String(64), nullable=False, index=True)
+    gateway_payload = db.Column(db.JSON)
+
+    criado_em = db.Column(
+        db.DateTime,
+        default=datetime.utcnow,
+        nullable=False
+    )
+
+    # Relacionamento ORM
+    cliente = db.relationship('Cliente', backref=db.backref(
+        'gateways',
+        lazy=True,
+        cascade='all, delete-orphan'
+    ))
+
+    __table_args__ = (
+        db.UniqueConstraint(
+            'gateway',
+            'ambiente',
+            'gateway_customer_id',
+            name='uq_gateway_customer'
+        ),
+    )
+
+    def __repr__(self):
+        return (
+            f"<ClienteGateway cliente={self.cliente_id} "
+            f"gateway={self.gateway} ambiente={self.ambiente}>"
+        )
 

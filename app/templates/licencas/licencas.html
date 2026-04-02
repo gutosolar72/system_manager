@@ -24,6 +24,7 @@
             <th>Chave</th>
             <th>ID Contrato</th>
             <th>Contrato</th>
+            <th>Local Inst.</th>
             <th>Expiração</th>
             <th class="text-center">Ações</th>
           </tr>
@@ -50,10 +51,22 @@
             </td>
             <td>
               {% if licenca.contrato %}
-                {{ licenca.contrato.cliente.nome_empresa[:30] }}
+                {{ licenca.contrato.cliente.nome_empresa[:20] }}
                 <button class="btn btn-link btn-sm text-info ver-licenca"
                         data-chave="{{ licenca.contrato.cliente.nome_empresa }}"
                         title="Ver nome completo">
+                  <i class="bi bi-eye"></i>
+                </button>
+              {% else %}
+                -
+              {% endif %}
+            </td>
+            <td>
+              {% if licenca.contrato %}
+                {{ licenca.contrato.local_instalacao[:20] }}
+                <button class="btn btn-link btn-sm text-info ver-licenca"
+                        data-chave="{{ licenca.contrato.local_instalacao }}"
+                        title="Ver Local completo">
                   <i class="bi bi-eye"></i>
                 </button>
               {% else %}
@@ -67,9 +80,9 @@
                   <i class="bi bi-link"></i> Vincular
                 </a>
               {% else %}
-                <button class="btn btn-secondary btn-sm" disabled>
-                  <i class="bi bi-check2-circle"></i> Vinculada
-                </button>
+                <a href="{{ url_for('main.editar_contrato', contrato_id=licenca.contrato.id) }}" class="btn btn-primary btn-sm">
+                  <i class="bi bi-eye"></i> Ver Contrato
+                </a>
               {% endif %}
               <button class="btn btn-danger btn-sm" data-bs-toggle="modal"
                       data-bs-target="#confirmDeleteModal"

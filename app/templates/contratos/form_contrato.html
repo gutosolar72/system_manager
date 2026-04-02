@@ -33,6 +33,11 @@
                         </div>
 
                         <div class="mb-3">
+                            {{ form.local_instalacao.label(class="form-label") }}
+                            {{ form.local_instalacao(class="form-control", placeholder="Nome do Condominio", required=False) }}
+                        </div>
+
+                        <div class="mb-3">
                             {{ form.produto_id.label(class="form-label") }}
                             {{ form.produto_id(class="form-select", required=True) }}
                         </div>
@@ -42,8 +47,8 @@
                         </div>
 
                         <div class="mb-3">
-                            {{ form.dia_faturamento.label(class="form-label") }}
-                            {{ form.dia_faturamento(class="form-control", placeholder="1 a 31") }}
+                            {{ form.dia_vencimento_boleto.label(class="form-label") }}
+                            {{ form.dia_vencimento_boleto(class="form-control", placeholder="1 a 31") }}
                         </div>
 
                         <div class="mb-3">
@@ -82,7 +87,7 @@
 <script>
 $(document).ready(function(){
     $("#valor_mensal").mask("000.000.000.000.000,00", {reverse: true});
-    $("#dia_faturamento").mask("00", {reverse: false});
+    $("#dia_vencimento_boleto").mask("00", {reverse: false});
 });
 </script>
 

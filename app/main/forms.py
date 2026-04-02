@@ -116,8 +116,9 @@ class ContratoForm(FlaskForm):
     integrador_id = SelectField('Integrador', coerce=coerce_int_or_none, validators=[DataRequired(message="Selecione um integrador")]
     )
     produto_id = SelectField('Produto', coerce=coerce_int_or_none, validators=[DataRequired(message="Selecione um Produto")])
-
-    dia_faturamento = IntegerField('Dia do Faturamento', default=25, validators=[Optional(), NumberRange(min=1, max=31)])
+    
+    local_instalacao = StringField('Local de Instalação', validators=[Optional()])
+    dia_vencimento_boleto = IntegerField('Dia Vencimento Boleto', default=25, validators=[Optional(), NumberRange(min=1, max=31)])
     valor_mensal = DecimalField('Valor Mensal', validators=[Optional()])
     status = SelectField('Status', choices=[
         ('pendente', 'Pendente'),

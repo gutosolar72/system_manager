@@ -5,6 +5,7 @@ import sys
 import os
 from datetime import datetime, timedelta
 from dateutil.relativedelta import relativedelta
+from app.integrations.asaas.service import gerar_cobranca_asaas
 
 # Ajusta path para importar o app
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
@@ -57,10 +58,12 @@ def gerar_faturas():
             contrato_id=contrato.id,
             valor_pago=contrato.valor_mensal,
             data_pagamento=None,
+            data_vencimento=hoje.replace(day=contrato.dia_vencimento_boleto),
             periodo_referencia_inicio=periodo_inicio,
             periodo_referencia_fim=periodo_fim,
             observacao=f'Fatura gerada automaticamente em {datetime.now()}',
-            status_boleto='pendente'
+            status_boleto='pendente',
+            gateway='asaas'
         )
 
         db.session.add(pagamento)
@@ -68,10 +71,11 @@ def gerar_faturas():
 
         # Gera boleto usando o serviço externo
         try:
-            #gerar_boleto_pagbank(pagamento.id)
-            print(f"✅ Fatura e boleto gerados para contrato {contrato.id}")
+            gerar_cobranca_asaas(pagamento)
+            print(f"✅ Fatura e cobrança Asaas geradas para contrato {contrato.id}")
+
         except Exception as e:
-            print(f"❌ Erro ao gerar boleto para contrato {contrato.id}: {e}")
+            print(f"❌ Erro ao gerar cobrança Asaas para contrato {contrato.id}: {e}")
 
         faturas_criadas += 1
 

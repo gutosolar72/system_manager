@@ -8,9 +8,6 @@ from sqlalchemy import or_
 from app.extensions import db
 import json
 from datetime import datetime, date
-from dateutil.relativedelta import relativedelta
-from calendar import monthrange
-from app.services.primeira_fatura import gerar_primeira_fatura
 
 
 #from app import app, db
@@ -342,24 +339,29 @@ def vincular_chave(licenca_id):
             return redirect(request.url)
 
         hoje = datetime.today().date()
+        
         if hoje.day > 24:
-            """Seta a data de expiração para o dia 5 do outro mês se a licença for vinculada depois do dia 24."""
-            proximo_mes = hoje + relativedelta(months=2)
-            print(f"Hoje é dia {hoje.day}, data de expiração setada o dia 5 do outro mes.")
-            dt_expiracao = date(proximo_mes.year, proximo_mes.month, 5)
-        else: 
-            """ Senão seta para o dia 5 do proximo mês """
-            proximo_mes = hoje + relativedelta(months=1)
-            print(f"Hoje é dia {hoje.day}, data de expiração setada o dia 5 do outro mes.")
-            dt_expiracao = date(proximo_mes.year, proximo_mes.month, 5)
-
+            mes = hoje.month + 2
+            print(f"Hoje é dia {hoje.day} maior que 24 - dt_expiracao para o mes: {mes}")
+        else:
+            mes = hoje.month + 1
+            print(f"Hoje é dia {hoje.day} não é maior que 24 - dt_expiracao para o mes: {mes}")
+        
+        ano = hoje.year
+        if mes > 12:
+            mes -= 12
+            ano += 1
+        
+        dt_expiracao = date(ano, mes, 5)
+        
+        print(f"Data de expiração da licença: {dt_expiracao}") 
+        
         licenca.contrato_id = contrato.id
         licenca.data_expiracao = dt_expiracao
         contrato.licenca_id = licenca.id
         contrato.status = "ativo"
         db.session.commit()
 
-        gerar_primeira_fatura(contrato)
         flash('Licença vinculada com sucesso', 'success')
         return redirect(url_for('main.licencas_lista'))
 
@@ -374,6 +376,9 @@ def apagar_licenca(id):
     contratos_vinculados = Contrato.query.filter_by(licenca_id=id).count()
     if contratos_vinculados > 0:
         flash('Não é possível excluir esta Licença. Existem contratos vinculados.', 'danger')
+        return redirect(url_for('main.licencas_lista'))
+    elif licenca.historico_pagamentos:
+        flash('Não é possível excluir esta Licença. Existem pagamentos vinculados.', 'danger')
         return redirect(url_for('main.licencas_lista'))
 
     db.session.delete(licenca)
@@ -510,7 +515,8 @@ def novo_contrato():
             cliente_id=form.cliente_id.data,
             integrador_id=form.integrador_id.data,
             produto_id=form.produto_id.data,
-            dia_faturamento=form.dia_faturamento.data,
+            dia_vencimento_boleto=form.dia_vencimento_boleto.data,
+            local_instalacao=form.local_instalacao.data,
             valor_mensal=form.valor_mensal.data,
             status=form.status.data,
             modulos=",".join(modulos_nomes),
@@ -553,7 +559,8 @@ def editar_contrato(contrato_id):
         form.produto_id.data = contrato.produto_id
         form.cliente_id.data = contrato.cliente_id
         form.integrador_id.data = contrato.integrador_id
-        form.dia_faturamento.data = contrato.dia_faturamento
+        form.local_instalacao.data = contrato.local_instalacao
+        form.dia_vencimento_boleto.data = contrato.dia_vencimento_boleto
         form.valor_mensal.data = contrato.valor_mensal
         form.status.data = contrato.status
         form.observacoes.data = contrato.observacoes
@@ -566,7 +573,8 @@ def editar_contrato(contrato_id):
         contrato.cliente_id = form.cliente_id.data
         contrato.integrador_id = form.integrador_id.data
         contrato.produto_id = form.produto_id.data
-        contrato.dia_faturamento = form.dia_faturamento.data
+        contrato.local_instalacao = form.local_instalacao.data
+        contrato.dia_vencimento_boleto = form.dia_vencimento_boleto.data
         contrato.valor_mensal = form.valor_mensal.data
         contrato.status = form.status.data
         contrato.modulos = ",".join(modulos_nomes)
@@ -613,7 +621,7 @@ def novo_pagamento_fatura(fatura_id):
         fatura.observacao = form.observacao.data or 'Fatura gerada automaticamente'
 
         if fatura.licenca:
-            fatura.licenca.data_expiracao = fatura.periodo_referencia_fim
+            fatura.licenca.data_expiracao = fatura.data_vencimento
             fatura.licenca.status = 'Ativo'
             db.session.add(fatura.licenca)
 

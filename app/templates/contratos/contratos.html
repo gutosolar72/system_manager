@@ -25,7 +25,8 @@
                             <th>ID</th>
                             <th>Cliente</th>
                             <th>Integrador</th>
-                            <th>Dia Faturamento</th>
+                            <th>Local Instalação</th>
+                            <th>Dia Boleto</th>
                             <th>Valor Mensal</th>
                             <th>Status</th>
                             <th class="text-end">Ações</th>
@@ -36,7 +37,7 @@
                         <tr>
                             <td>{{ contrato.id }}</td>
                             <td>
-                                {{ contrato.cliente.nome_empresa[:30] }}
+                                {{ contrato.cliente.nome_empresa[:20] }}
                                 <button class="btn btn-link btn-sm text-info ver-nome-completo"
                                         data-nome="{{ contrato.cliente.nome_empresa }}"
                                         title="Ver cliente completo">
@@ -45,7 +46,7 @@
                             </td>
                             <td>
                                 {% if contrato.integrador %}
-                                {{ contrato.integrador.nome_empresa[:30] }}
+                                {{ contrato.integrador.nome_empresa[:20] }}
                                 <button class="btn btn-link btn-sm text-info ver-nome-completo"
                                         data-nome="{{ contrato.integrador.nome_empresa }}"
                                         title="Ver integrador completo">
@@ -55,7 +56,8 @@
                                 -
                                 {% endif %}
                             </td>
-                            <td>{{ contrato.dia_faturamento or '-' }}</td>
+                            <td>{{ contrato.local_instalacao or '-' }}</td>
+                            <td>{{ contrato.dia_vencimento_boleto or '-' }}</td>
                             <td>R$ {{ "%.2f"|format(contrato.valor_mensal) if contrato.valor_mensal else '-' }}</td>
                             <td>{{ contrato.status.capitalize() }}</td>
                             <td class="text-end">
