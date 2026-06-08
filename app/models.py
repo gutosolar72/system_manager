@@ -174,6 +174,7 @@ class Contrato(db.Model):
     local_instalacao = db.Column(db.Text, nullable=True)
     dia_vencimento_boleto = db.Column(db.Integer, nullable=True)
     valor_mensal = db.Column(db.Numeric(10,2), nullable=True)
+    faturavel = db.Column(db.Boolean, default=True, nullable=False)
     observacoes = db.Column(db.Text, nullable=True)
     status = db.Column(db.Enum('pendente','ativo','cancelado'), nullable=False, default='pendente')
     data_criacao = db.Column(db.TIMESTAMP, server_default=db.func.current_timestamp())
@@ -303,6 +304,13 @@ class HistoricoPagamentos(db.Model):
     data_emissao = db.Column(db.Date)
     data_vencimento = db.Column(db.Date)
     data_credito = db.Column(db.Date)
+    
+    nf_id = db.Column(db.String(64), nullable=True)
+    nf_status = db.Column(db.String(30), nullable=True)
+    nf_pdf_url = db.Column(db.Text, nullable=True)
+    nf_xml_url = db.Column(db.Text, nullable=True)
+    nf_emitida_em = db.Column(db.DateTime, nullable=True)
+    nf_enviada_email = db.Column(db.Boolean, default=False, nullable=False)
 
     # Relacionamentos
     licenca = db.relationship('Licenca', back_populates='historico_pagamentos')

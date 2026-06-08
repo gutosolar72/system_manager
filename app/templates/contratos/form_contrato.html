@@ -56,6 +56,11 @@
                             {{ form.valor_mensal(class="form-control", placeholder="0,00", type="text", id="valor_mensal") }}
                         </div>
 
+                        <div class="form-check mb-3">
+                            {{ form.faturavel(class="form-check-input") }}
+                            {{ form.faturavel.label(class="form-check-label") }}
+                        </div>
+
                         <div class="mb-3">
                             {{ form.status.label(class="form-label") }}
                             {{ form.status(class="form-select") }}

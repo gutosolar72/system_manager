@@ -9,6 +9,7 @@ no Asaas.
 """
 
 from app.integrations.asaas.client import AsaasClient
+import re
 
 
 class AsaasCustomerService:
@@ -20,20 +21,22 @@ class AsaasCustomerService:
         """
         Cria um customer no Asaas a partir do cliente interno
         """
+        telefone_completo = re.sub(r'\D', '', f"{cliente.ddd}{cliente.telefone}")
 
         payload = {
             "name": cliente.nome_empresa,
-            "email": cliente.email,
+            "email": re.split(r'[;,\s]+', cliente.email.strip())[0] if cliente.email else None,
             "cpfCnpj": cliente.cnpj,
-            "phone": cliente.telefone,
-            "mobilePhone": cliente.telefone,
+            "phone": telefone_completo,
+            "mobilePhone": telefone_completo,
             "address": cliente.logradouro,
             "addressNumber": cliente.numero,
             "complement": cliente.complemento,
             "province": cliente.bairro,
             "postalCode": cliente.cep,
             "city": cliente.cidade,
-            "state": cliente.estado
+            "state": cliente.estado,
+            "notificationDisabled": True
         }
 
         return self.client.post('/customers', payload)

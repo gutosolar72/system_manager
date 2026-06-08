@@ -1,4 +1,5 @@
 # app/integrations/asaas/config.py
+import os
 
 """
 Configuração do Asaas
@@ -8,7 +9,7 @@ Ambiente hardcoded conforme decisão do projeto.
 Quando entrar em produção, este arquivo NÃO deve mudar com frequência.
 """
 
-ASAAS_ENV = 'sandbox'  # 'sandbox' ou 'producao'
+ASAAS_ENV = 'producao'  # 'sandbox' ou 'producao'
 
 ASAAS_CONFIG = {
     'sandbox': {
@@ -17,7 +18,8 @@ ASAAS_CONFIG = {
     },
     'producao': {
         'base_url': 'https://www.asaas.com/api/v3',
-        'api_key': 'SUA_API_KEY_PRODUCAO_AQUI'
+        'api_key': os.getenv("ASAAS_API_KEY"),
+        'api_token': os.getenv("ASAAS_WEBHOOK_TOKEN")
     }
 }
 

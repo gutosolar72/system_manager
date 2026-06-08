@@ -41,6 +41,7 @@ def log_auditoria(tipo_acao, tabela_afetada=None, registro_id=None, detalhes=Non
 @bp.route("/")
 @login_required
 def index():
+    
     return render_template("dashboard.html", title="Dashboard")
 
 
@@ -80,6 +81,7 @@ def logout():
 @bp.route("/clientes")
 @login_required
 def listar_clientes():
+
     query_param = request.args.get("busca", "")
     page = request.args.get("page", 1, type=int)
 
@@ -338,26 +340,25 @@ def vincular_chave(licenca_id):
             flash('Contrato inválido', 'danger')
             return redirect(request.url)
 
+
+        from dateutil.relativedelta import relativedelta
+       
         hoje = datetime.today().date()
+        dia_vencimento = contrato.dia_vencimento_boleto
         
-        if hoje.day > 24:
-            mes = hoje.month + 2
-            print(f"Hoje é dia {hoje.day} maior que 24 - dt_expiracao para o mes: {mes}")
+        # define mês base
+        if hoje.day <= 25:
+            mes_base = hoje + relativedelta(months=1)
         else:
-            mes = hoje.month + 1
-            print(f"Hoje é dia {hoje.day} não é maior que 24 - dt_expiracao para o mes: {mes}")
+            mes_base = hoje + relativedelta(months=2)
         
-        ano = hoje.year
-        if mes > 12:
-            mes -= 12
-            ano += 1
+        vencimento = mes_base.replace(day=dia_vencimento)
         
-        dt_expiracao = date(ano, mes, 5)
-        
-        print(f"Data de expiração da licença: {dt_expiracao}") 
+        licenca.data_expiracao = vencimento + relativedelta(months=1)
+        licenca.status = 'Ativo'
         
         licenca.contrato_id = contrato.id
-        licenca.data_expiracao = dt_expiracao
+        licenca.data_expiracao = vencimento
         contrato.licenca_id = licenca.id
         contrato.status = "ativo"
         db.session.commit()
@@ -518,6 +519,7 @@ def novo_contrato():
             dia_vencimento_boleto=form.dia_vencimento_boleto.data,
             local_instalacao=form.local_instalacao.data,
             valor_mensal=form.valor_mensal.data,
+            faturavel=form.faturavel.data,
             status=form.status.data,
             modulos=",".join(modulos_nomes),
             observacoes=form.observacoes.data
@@ -562,6 +564,7 @@ def editar_contrato(contrato_id):
         form.local_instalacao.data = contrato.local_instalacao
         form.dia_vencimento_boleto.data = contrato.dia_vencimento_boleto
         form.valor_mensal.data = contrato.valor_mensal
+        form.faturavel.data = contrato.faturavel
         form.status.data = contrato.status
         form.observacoes.data = contrato.observacoes
     else:
@@ -576,6 +579,7 @@ def editar_contrato(contrato_id):
         contrato.local_instalacao = form.local_instalacao.data
         contrato.dia_vencimento_boleto = form.dia_vencimento_boleto.data
         contrato.valor_mensal = form.valor_mensal.data
+        contrato.faturavel = form.faturavel.data
         contrato.status = form.status.data
         contrato.modulos = ",".join(modulos_nomes)
         contrato.observacoes = form.observacoes.data
@@ -621,7 +625,12 @@ def novo_pagamento_fatura(fatura_id):
         fatura.observacao = form.observacao.data or 'Fatura gerada automaticamente'
 
         if fatura.licenca:
-            fatura.licenca.data_expiracao = fatura.data_vencimento
+            from dateutil.relativedelta import relativedelta
+
+            ref_fim     = fatura.periodo_referencia_fim
+            proximo_mes = ref_fim + relativedelta(months=1)
+            ultimo_dia  = monthrange(proximo_mes.year, proximo_mes.month)[1]
+            fatura.licenca.data_expiracao = fatura.data_vencimento + relativedelta(months=1)
             fatura.licenca.status = 'Ativo'
             db.session.add(fatura.licenca)
 

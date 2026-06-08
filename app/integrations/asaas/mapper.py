@@ -18,6 +18,12 @@ Ele apenas converte estruturas e normaliza dados.
 
 from datetime import datetime
 
+meses = {
+    1: "Janeiro", 2: "Fevereiro", 3: "Março",
+    4: "Abril", 5: "Maio", 6: "Junho",
+    7: "Julho", 8: "Agosto", 9: "Setembro",
+    10: "Outubro", 11: "Novembro", 12: "Dezembro"
+}
 
 # ======================================================
 # STATUS
@@ -65,16 +71,19 @@ def map_boleto_payload(cliente, contrato, historico_pagamento):
     - description     → contrato / licença / período
     """
 
+    from datetime import datetime
+
+    periodo = historico_pagamento.periodo_referencia_inicio
+    
+    mes_nome = meses[periodo.month]
+    ano = periodo.year
+
     return {
         "customer": cliente.asaas_customer_id,
         "billingType": "BOLETO",
         "value": float(historico_pagamento.valor_pago),
         "dueDate": historico_pagamento.data_vencimento.strftime('%Y-%m-%d'),
-        "description": (
-            f"Contrato #{contrato.id} | "
-            f"Licença #{historico_pagamento.licenca_id} | "
-            f"Período {historico_pagamento.periodo_referencia_inicio:%m/%Y}"
-        )
+        "description": f"Manutenção e suporte técnico remoto em software de telefonia da portaria referente ao mês de {mes_nome}/{ano}."
     }
 
 

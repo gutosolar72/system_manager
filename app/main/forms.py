@@ -120,6 +120,7 @@ class ContratoForm(FlaskForm):
     local_instalacao = StringField('Local de Instalação', validators=[Optional()])
     dia_vencimento_boleto = IntegerField('Dia Vencimento Boleto', default=25, validators=[Optional(), NumberRange(min=1, max=31)])
     valor_mensal = DecimalField('Valor Mensal', validators=[Optional()])
+    faturavel = BooleanField('Gerar cobrança e NFS-e automaticamente', default=True)
     status = SelectField('Status', choices=[
         ('pendente', 'Pendente'),
         ('ativo', 'Ativo'),

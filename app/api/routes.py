@@ -155,54 +155,167 @@ def remote_access():
     }
 
     return jsonify(response), 200
-
 @bp_api.route('/asaas/webhook', methods=['POST'])
 def asaas_webhook():
     """
-    Recebe eventos do Asaas (pagamento, cancelamento, etc)
-    """
+    Recebe eventos do Asaas.
+    Eventos tratados:
+      - PAYMENT_RECEIVED/CONFIRMED → marca boleto como pago + atualiza licença
+      - PAYMENT_OVERDUE            → marca boleto como vencido
+      - INVOICE_AUTHORIZED         → salva pdf/xml da NF emitida
+      - INVOICE_CANCELED           → limpa pdf/xml da NF cancelada
+      - INVOICE_ERROR              → loga erro da NF na prefeitura
 
+    Lógica de atualização da licença (data_expiracao):
+      - Tem faturas em aberto não pagas?
+          → SIM → data_expiracao = vencimento da mais antiga em aberto + 1 mês
+          → NÃO → data_expiracao = vencimento da fatura paga mais recente + 1 mês
+    """
     from app.models import HistoricoPagamentos
     from app.integrations.asaas.mapper import map_webhook_event
+    from datetime import datetime
+    from dateutil.relativedelta import relativedelta
+    import os
+
+    token = request.headers.get("asaas-access-token")
+    if token != os.getenv("ASAAS_WEBHOOK_TOKEN"):
+        return jsonify({"status": "unauthorized"}), 401
 
     payload = request.get_json() or {}
+    event   = payload.get("event")
 
-    print("\n=== WEBHOOK ASAAS RECEBIDO ===")
+    print(f"\n=== WEBHOOK ASAAS | evento: {event} ===")
     print(payload)
 
     try:
-        dados = map_webhook_event(payload)
+        # ----------------------------------------------------------
+        # 1. Pagamento confirmado → atualiza historico + licença
+        # ----------------------------------------------------------
+        if event in ("PAYMENT_RECEIVED", "PAYMENT_CONFIRMED"):
+            dados      = map_webhook_event(payload)
+            payment_id = dados.get("gateway_payment_id")
 
-        payment_id = dados.get("gateway_payment_id")
+            if not payment_id:
+                return jsonify({"status": "ignored"}), 200
 
-        if not payment_id:
+            historico = HistoricoPagamentos.query.filter_by(
+                gateway='asaas',
+                gateway_payment_id=payment_id
+            ).first()
+
+            if not historico:
+                print(f"Pagamento não encontrado: {payment_id}")
+                return jsonify({"status": "not_found"}), 200
+
+            historico.status_boleto   = dados.get("status_boleto")
+            historico.data_pagamento  = dados.get("data_pagamento")
+            historico.data_credito    = dados.get("data_credito")
+            historico.gateway_payload = payload
+
+            if historico.status_boleto == 'pago' and historico.licenca:
+                licenca_id = historico.licenca_id
+
+                # Faturas em aberto (não pagas, excluindo a atual)
+                faturas_abertas = HistoricoPagamentos.query.filter(
+                    HistoricoPagamentos.licenca_id == licenca_id,
+                    HistoricoPagamentos.id != historico.id,
+                    HistoricoPagamentos.status_boleto.in_(['pendente', 'emitido', 'vencido'])
+                ).order_by(HistoricoPagamentos.data_vencimento.asc()).all()
+
+                if faturas_abertas:
+                    # Tem inadimplência → trava na mais antiga em aberto
+                    mais_antiga = faturas_abertas[0]
+                    nova_expiracao = mais_antiga.data_vencimento + relativedelta(months=1)
+                    print(f"⚠️  Inadimplência detectada — travando em {mais_antiga.data_vencimento}")
+                else:
+                    # Sem pendências → pega a fatura paga mais recente (incluindo a atual)
+                    fatura_mais_recente = HistoricoPagamentos.query.filter(
+                        HistoricoPagamentos.licenca_id == licenca_id,
+                        HistoricoPagamentos.status_boleto == 'pago'
+                    ).order_by(HistoricoPagamentos.data_vencimento.desc()).first()
+
+                    if not fatura_mais_recente:
+                        fatura_mais_recente = historico
+
+                    nova_expiracao = fatura_mais_recente.data_vencimento + relativedelta(months=1)
+
+                historico.licenca.data_expiracao = nova_expiracao
+                historico.licenca.status = 'Ativo'
+                print(f"✅ Licença atualizada: {historico.licenca.id} → {nova_expiracao}")
+
+            db.session.commit()
+            print(f"✅ Pagamento atualizado: {payment_id}")
+            return jsonify({"status": "updated"}), 200
+
+        # ----------------------------------------------------------
+        # 2. Boleto vencido → atualiza status
+        # ----------------------------------------------------------
+        elif event == "PAYMENT_OVERDUE":
+            dados      = map_webhook_event(payload)
+            payment_id = dados.get("gateway_payment_id")
+
+            if not payment_id:
+                return jsonify({"status": "ignored"}), 200
+
+            historico = HistoricoPagamentos.query.filter_by(
+                gateway='asaas',
+                gateway_payment_id=payment_id
+            ).first()
+
+            if not historico:
+                print(f"Pagamento não encontrado: {payment_id}")
+                return jsonify({"status": "not_found"}), 200
+
+            historico.status_boleto   = 'vencido'
+            historico.gateway_payload = payload
+            db.session.commit()
+            print(f"⚠️  Boleto vencido: {payment_id}")
+            return jsonify({"status": "updated"}), 200
+
+        # ----------------------------------------------------------
+        # 3. Eventos de NFS-e
+        # ----------------------------------------------------------
+        elif event in ("INVOICE_AUTHORIZED", "INVOICE_CANCELED", "INVOICE_ERROR"):
+            invoice_data = payload.get("invoice", {})
+            invoice_id   = invoice_data.get("id")
+
+            if not invoice_id:
+                return jsonify({"status": "ignored"}), 200
+
+            historico = HistoricoPagamentos.query.filter_by(
+                nf_id=invoice_id
+            ).first()
+
+            if not historico:
+                print(f"NF não encontrada no banco: {invoice_id}")
+                return jsonify({"status": "not_found"}), 200
+
+            historico.nf_status = invoice_data.get("status")
+
+            if event == "INVOICE_AUTHORIZED":
+                historico.nf_pdf_url    = invoice_data.get("pdfUrl")
+                historico.nf_xml_url    = invoice_data.get("xmlUrl")
+                historico.nf_emitida_em = datetime.utcnow()
+                print(f"✅ NF autorizada: {invoice_id}")
+
+            elif event == "INVOICE_CANCELED":
+                historico.nf_pdf_url = None
+                historico.nf_xml_url = None
+                print(f"🚫 NF cancelada: {invoice_id}")
+
+            elif event == "INVOICE_ERROR":
+                print(f"❌ NF com erro: {invoice_id} — {invoice_data.get('statusDescription')}")
+
+            db.session.commit()
+            return jsonify({"status": "updated"}), 200
+
+        # ----------------------------------------------------------
+        # 4. Qualquer outro evento → ignora
+        # ----------------------------------------------------------
+        else:
             return jsonify({"status": "ignored"}), 200
 
-        historico = HistoricoPagamentos.query.filter_by(
-            gateway='asaas',
-            gateway_payment_id=payment_id
-        ).first()
-
-        if not historico:
-            print(f"Pagamento não encontrado: {payment_id}")
-            return jsonify({"status": "not_found"}), 200
-
-        # Atualiza dados
-        historico.status_boleto = dados.get("status_boleto")
-        historico.data_pagamento = dados.get("data_pagamento")
-        historico.data_credito = dados.get("data_credito")
-        historico.gateway_payload = payload
-
-        if historico.status_boleto == 'pago' and historico.licenca:
-            historico.licenca.data_expiracao = historico.data_vencimento
-            historico.licenca.status = 'Ativo'
-
-        db.session.commit()
-
-        print(f"Pagamento atualizado: {payment_id}")
-
-        return jsonify({"status": "updated"}), 200
-
     except Exception as e:
-        print(f"Erro no webhook: {str(e)}")
+        db.session.rollback()
+        print(f"❌ Erro no webhook: {str(e)}")
         return jsonify({"status": "error"}), 500
