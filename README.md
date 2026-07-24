@@ -23,7 +23,7 @@ O System Manager centraliza a administração comercial das instalações do Nan
 - **Dependências:** listadas em `requirements.txt`
 
 ## Estrutura do projeto
-``
+```
 system_manager/
 ├── run.py                     # Ponto de entrada da aplicação
 ├── config.py                   # Configurações do sistema (ambiente, credenciais de integração)
