@@ -40,5 +40,4 @@ Projeto de uso comercial interno, integrado ao ecossistema NanoSIP. Distribuiç�
 ## Autor
 
 **Luis Augusto de Campos Alves**
-Professor de Ensino Superior — Fatec Ourinhos
 [github.com/gutosolar72](https://github.com/gutosolar72)
